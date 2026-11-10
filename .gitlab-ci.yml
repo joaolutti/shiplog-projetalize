@@ -7,8 +7,16 @@ default:
     paths: [.bun-cache/]
 
 check:
+  services:
+    - name: postgres:17
+      alias: postgres
   variables:
     BUN_INSTALL_CACHE_DIR: .bun-cache
+    POSTGRES_USER: shiplog
+    POSTGRES_PASSWORD: shiplog
+    POSTGRES_DB: shiplog_test
+    # Enables the database tests (tests/helpers/db.ts).
+    TEST_DATABASE_URL: postgres://shiplog:shiplog@postgres:5432/shiplog_test
   script:
     - bun install --frozen-lockfile
     - bun run typecheck

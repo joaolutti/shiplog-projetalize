@@ -1,0 +1,42 @@
+{
+  "object_kind": "issue",
+  "event_type": "issue",
+  "user": { "id": 31, "name": "Paula PM", "username": "paula.pm" },
+  "project": {
+    "id": 777,
+    "name": "billing-svc",
+    "path_with_namespace": "acme/billing-svc",
+    "web_url": "https://gitlab.com/acme/billing-svc"
+  },
+  "object_attributes": {
+    "id": 90412,
+    "iid": 412,
+    "project_id": 777,
+    "title": "Corrigir login com SSO",
+    "description": "O login falha para clientes SSO.\n\nSolicitante: Ana Ribeiro\n\nhttps://app.hubspot.com/contacts/123/ticket/456",
+    "state": "opened",
+    "action": "update",
+    "url": "https://gitlab.com/acme/billing-svc/-/issues/412",
+    "weight": 3,
+    "assignee_ids": [11]
+  },
+  "assignees": [{ "id": 11, "name": "Dev One", "username": "dev.one" }],
+  "labels": [
+    { "id": 1, "title": "Branch: Staging" },
+    { "id": 2, "title": "Weight: 3" },
+    { "id": 3, "title": "Development: Done" }
+  ],
+  "changes": {
+    "labels": {
+      "previous": [
+        { "id": 1, "title": "Branch: Staging" },
+        { "id": 2, "title": "Weight: 3" }
+      ],
+      "current": [
+        { "id": 1, "title": "Branch: Staging" },
+        { "id": 2, "title": "Weight: 3" },
+        { "id": 3, "title": "Development: Done" }
+      ]
+    }
+  }
+}

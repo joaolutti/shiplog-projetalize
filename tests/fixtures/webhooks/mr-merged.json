@@ -1,0 +1,24 @@
+{
+  "object_kind": "merge_request",
+  "event_type": "merge_request",
+  "user": { "id": 11, "name": "Dev One", "username": "dev.one" },
+  "project": {
+    "id": 777,
+    "name": "billing-svc",
+    "path_with_namespace": "acme/billing-svc",
+    "web_url": "https://gitlab.com/acme/billing-svc"
+  },
+  "object_attributes": {
+    "id": 5045,
+    "iid": 45,
+    "target_project_id": 777,
+    "source_project_id": 777,
+    "title": "Corrige login SSO",
+    "description": "## Notas de entrega\nCorrige o login com SSO.",
+    "state": "merged",
+    "action": "merge",
+    "author_id": 11,
+    "target_branch": "staging",
+    "url": "https://gitlab.com/acme/billing-svc/-/merge_requests/45"
+  }
+}
