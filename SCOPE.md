@@ -1,7 +1,8 @@
 # Shiplog — Project Scope
 
-> Status: **Scoping / scaffold only.** No feature code is implemented yet.
-> Last updated: 2026-11-03
+> Status: **M1 (Ingest) in progress.**
+> Last updated: 2026-11-10. System design: [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
+> Decisions made after the handoff are in §13.
 
 ## 1. Problem
 
@@ -68,12 +69,14 @@ GitLab: "Development: Done" label added to an issue
 [2] Ingest ── upsert ticket; read "Branch: *", "Weight: *" labels + native weight
    │          fetch related MRs (cross-project) via the GitLab API
    │          upsert shipment, unique on (ticket, branch)
+   │          gates run in this order (D40):
    │
-   ├── no Branch label?     → DM nudge: "Which branch?" [Main] [Staging] …
-   ├── open MRs remain?     → DM nudge: "!45 in billing-svc is still open"
-   │                             [Hold until merged] [Publish anyway]
-   │                             (held → re-checked on each Merge Request Hook)
-   ├── recipient unlinked?  → status "unclaimed": DM leads + "Unclaimed" queue in web app
+   ├── 1. recipient unlinked? → status "unclaimed": DM leads + "Unclaimed" queue in web app
+   │                            (leads then answer the remaining gates)
+   ├── 2. no Branch label?    → DM nudge: "Which branch?" [Main] [Staging] …
+   ├── 3. open MRs remain?    → DM nudge: "!45 in billing-svc is still open"
+   │                              [Aguardar o merge] [Publicar mesmo assim]
+   │                              (held → re-checked on each Merge Request Hook)
    ▼
 [3] Draft DM to the developer
       "Shipping <title> to Staging"  · links · requester · draft notes
@@ -90,6 +93,8 @@ GitLab: "Development: Done" label added to an issue
    ▼
 [5] Verify (anyone, in the web app or from the requester DM)
       ✅ Verified (by A, B, …)   or   ⚠️ Issue reported → thread comment + DM to the dev
+      Reporters can change their own row to verified. "Pedir nova verificação" DMs every
+      reporter again (dev or lead, at most once per hour per shipment) (D41)
 ```
 
 ### Rules
@@ -103,13 +108,19 @@ GitLab: "Development: Done" label added to an issue
 - **Weight mismatch.** If the native weight field and the `Weight: X` label disagree, the native
   field wins and the developer DM says so.
 
-### Shipment states
+### Shipment states (D40, full table in `docs/ARCHITECTURE.md` §3)
 ```
-status:        held → pending_confirmation → published
-                   ↘ unclaimed ↗ (a lead assigns it or publishes it)
-published_via: confirmed | auto
+status:        unclaimed → needs_branch → awaiting_hold_decision → held → pending_confirmation → published
+               (each gate is skipped when it doesn't apply; a lead can publish an unclaimed shipment directly)
+published_via: confirmed | auto | lead
 verification:  unverified | verified | issue_reported      (independent of status)
 ```
+`branch` is NULL while the shipment is `needs_branch`. Uniqueness is enforced by two partial
+indexes: `(ticket_id, branch) WHERE branch IS NOT NULL` and `(ticket_id) WHERE branch IS NULL`.
+
+### Architecture rule (D39)
+Every state change goes through one function in `src/lib/shipments/commands.ts`. Server actions
+and Slack handlers call the same commands.
 
 ## 5. Message content: where each field comes from
 
@@ -117,13 +128,24 @@ verification:  unverified | verified | issue_reported      (independent of statu
 |---|---|
 | Branch | `Branch: <name>` label |
 | Issue #, link, title | Webhook payload |
-| Requester @mention | A `Requester:` line in the GitLab issue template (email) → Slack `users.lookupByEmail` |
-| Description of what was made | v1: the `## Shipping notes` section of the MR template, falling back to the MR title. v1.5: LLM draft |
+| Requester @mention | An optional `Solicitante: <name>` line in the GitLab issue template → matched against the Slack directory (D16 revised) |
+| Description of what was made | v1: the `## Notas de entrega` section of the MR template, falling back to the MR title. v1.5: LLM draft |
 | Verification | Buttons, tracked per user |
 
+**Requester matching (D16 revised):**
+- Accepted forms: `Solicitante: Ana Ribeiro`, `**Solicitante:** Ana`, `@ana.ribeiro`. Empty, `-` and `N/A` mean no requester
+  (general updates such as new features have none).
+- Names are compared without case or accents against Slack `real_name` and `display_name` (`users.list`, cached 1 h).
+  A `@handle` matches the Slack username.
+- One match → requester resolved. None or several → the draft DM asks the dev to pick a Slack user.
+  If it auto-publishes unresolved, no requester DM is sent and the ticket page shows the raw name.
+
 **Process changes needed:**
-- Add `Requester:` to the issue template.
-- Add `## Shipping notes` to the MR template.
+- Add an optional `Solicitante:` line to the issue template.
+- Add `## Notas de entrega` to the MR template.
+
+**Language and time (D37, D42):** the interface and Slack messages are pt-BR only. GitLab label names,
+branch names and terms like MR/issue stay as they are. All dates and day buckets use `America/Sao_Paulo`.
 
 ## 6. Identity and account linking
 
@@ -133,7 +155,7 @@ GitLab.com webhooks and the API usually **redact emails**, so accounts can't be 
   checking the team ID claim.
 - **Connect GitLab** (devs and leads only): GitLab OAuth, `read_user` scope. This stores the GitLab user ID ↔ Shiplog user
   mapping. Membership of the top-level group is checked when linking.
-- **Requesters** never need GitLab: they're resolved from the issue template email through Slack.
+- **Requesters** never need GitLab: they're resolved from the issue template's `Solicitante:` name through Slack.
 - **Unlinked GitLab user** → the shipment becomes `unclaimed`, the leads get a DM, and it appears in the web app queue.
 
 ## 7. Weight second opinion (v1.5)
@@ -228,6 +250,7 @@ The code is provider-agnostic: the AI SDK with an OpenAI-compatible base URL, co
 | Auth | Better Auth (Slack + GitLab social providers, account linking) | Stable, has Drizzle adapter + Next.js handler |
 | LLM | Vercel AI SDK + `@ai-sdk/openai-compatible` | Any provider in §9 by config. Structured output with zod |
 | Validation | zod | Env, webhook payloads, LLM output |
+| Runtime | **Bun** for installs, scripts and the worker; **Node 22** for Next.js (D43) | Fast installs, TypeScript without `tsx`; Next is tested on Node |
 | Hosting | **Render**: web service + background worker + managed Postgres | Docker-based, so it can move to the company cloud later |
 
 ### Endpoints
@@ -240,7 +263,8 @@ The code is provider-agnostic: the AI SDK with an OpenAI-compatible base URL, co
 
 ### Background jobs (worker)
 `ingest-gitlab-event` · `send-draft-dm` · `send-reminder` · `auto-publish` · `publish-shipment` ·
-`notify-requester` · `refresh-merge-requests` · `review-weight` (v1.5)
+`notify-requester` · `refresh-merge-requests` · `handle-slack-interaction` · `request-reverification` ·
+`review-weight` (v1.5)
 
 ### Data model (`src/lib/db/schema.ts`)
 `user / session / account / verification` (Better Auth) · `gitlab_events` · `tickets` · `shipments` ·
@@ -250,7 +274,7 @@ The code is provider-agnostic: the AI SDK with an OpenAI-compatible base URL, co
 | System | What | Who |
 |---|---|---|
 | GitLab (Premium) | Group webhook on the top-level group (Issue + MR events, secret token). Group access token (`read_api`). OAuth application (`read_user`) | Group Owner |
-| Slack | One Slack app: OIDC sign-in, bot (`chat:write`, `im:write`, `users:read`, `users:read.email`), interactivity URL. Phase 2: `channels:history` for mirroring | Workspace admin |
+| Slack | One Slack app: OIDC sign-in, bot (`chat:write`, `im:write`, `users:read`), interactivity URL. Phase 2: `channels:history` for mirroring | Workspace admin |
 | Render | Blueprint (`render.yaml`): web, worker, Postgres, secret env group | Whoever owns billing |
 | LLM | OpenRouter company account with ZDR enforced | TBD (§12) |
 
@@ -270,8 +294,28 @@ The code is provider-agnostic: the AI SDK with an OpenAI-compatible base URL, co
 
 - [ ] Confirm the Fibonacci scale's top value (13? 21?) and update the rubric (`config/weight-rubric.md`).
 - [ ] Leads choose the calibration tickets (`config/calibration.yaml`).
-- [ ] Add `Requester:` to the issue template and `## Shipping notes` to the MR template.
+- [ ] Add an optional `Solicitante:` line to the issue template and `## Notas de entrega` to the MR template.
+- [ ] Visão geral (`/overview`): M4 or v2?
+- [ ] Proposed: the recipient is the *first linked* candidate in D4 order; `unclaimed` only when none is linked.
+- [ ] Proposed: an MR closed without merging no longer blocks the hold gate.
+- [ ] Proposed: a re-ship (reopen → Done again, same branch) reuses the same shipment row with a new draft cycle.
 - [ ] Who creates the Slack app (workspace admin) and the GitLab group token/webhook (group Owner)?
 - [ ] Who owns Render billing and the LLM account?
 - [ ] Fill in `config/data-policy.yaml` with the real groups/projects.
 - [ ] Reminder delay (default 4h) and auto-publish delay (default 24h).
+
+## 13. Decisions after the handoff
+
+Numbered to continue the decision log in `HANDOFF.md` §3. Where they differ, these win.
+
+| # | Decision |
+|---|---|
+| D16 (revised) | Requester = **optional `Solicitante: <name>` line** (no email), resolved against the Slack directory. If there's no unique match, the dev picks in the draft DM. General updates have no requester. `users:read.email` is no longer needed |
+| D16a | The MR template section is **`## Notas de entrega`** |
+| D37 | **The interface and Slack messages are pt-BR only.** GitLab label names, branch names and terms like MR/issue stay as they are |
+| D38 | The activity grid shows **team totals by day only** (applies D24) |
+| D39 | **A single command layer** (`src/lib/shipments/commands.ts`) is shared by server actions and Slack handlers. State only changes there |
+| D40 | Gate order: **recipient → branch → open MRs → draft**. Statuses: `unclaimed`, `needs_branch`, `awaiting_hold_decision`, `held`, `pending_confirmation`, `published`. `branch` is nullable, with partial unique indexes |
+| D41 | **The reporter can change their verification** from issue to verified. **"Pedir nova verificação"** DMs every reporter (dev or lead, at most once per hour per shipment) |
+| D42 | All dates and day buckets use `America/Sao_Paulo` |
+| D43 | **Bun** is the package manager, script runner and worker runtime. **Next.js runs on Node 22.** Code under `src/` uses no Bun-only APIs. Replaces "npm + tsx" |

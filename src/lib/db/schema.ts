@@ -1,9 +1,11 @@
 /**
- * Shiplog domain schema. See SCOPE.md §4 (flow), §7 (weight), §8 (audit).
+ * Shiplog domain schema. See SCOPE.md §4 (flow), §7 (weight), §8 (audit) and
+ * docs/ARCHITECTURE.md §3 (state machine), §8 (changes vs the scaffold).
  *
  * Shiplog never writes to GitLab, so `tickets` and `shipment_merge_requests` are
  * cached copies of GitLab state, refreshed from webhooks and API reads.
  */
+import { sql } from "drizzle-orm";
 import {
   bigint,
   integer,
@@ -22,12 +24,18 @@ export * from "./auth-schema";
 
 // ── Enums ────────────────────────────────────────────────────────────
 
+/** Gates run recipient → branch → open MRs → draft (D40). */
 export const shipmentStatus = pgEnum("shipment_status", [
-  "held", // waiting on open MRs (dev chose "Hold until merged") or a missing Branch label
+  "unclaimed", // no linked recipient; leads are DMed and answer the remaining gates
+  "needs_branch", // Done applied without a Branch label; `branch` is NULL
+  "awaiting_hold_decision", // related MRs still open; recipient chooses hold or publish anyway
+  "held", // waiting for the last related MR to merge
   "pending_confirmation", // draft DM sent, waiting for the dev
-  "unclaimed", // recipient has no linked Shiplog account; leads must resolve
   "published",
 ]);
+
+/** Where `tickets.requester_slack_id` came from (D16 revised). */
+export const requesterSource = pgEnum("requester_source", ["template", "dev_picked", "none"]);
 
 export const publishedVia = pgEnum("published_via", ["confirmed", "auto", "lead"]);
 
@@ -78,17 +86,24 @@ export const tickets = pgTable(
     /** Parsed from the "Weight: X" label; mismatch with native is surfaced to the dev. */
     labelWeight: integer("label_weight"),
     assigneeGitlabIds: jsonb("assignee_gitlab_ids").$type<number[]>().notNull().default([]),
-    requesterEmail: text("requester_email"),
+    /** `Solicitante:` value as typed in the issue; NULL for general updates. */
+    requesterRaw: text("requester_raw"),
     requesterSlackId: text("requester_slack_id"),
+    requesterSource: requesterSource("requester_source").notNull().default("none"),
     hubspotUrls: jsonb("hubspot_urls").$type<string[]>().notNull().default([]),
     gitlabState: text("gitlab_state").notNull(), // opened | closed
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
   },
   (t) => [uniqueIndex("tickets_project_iid").on(t.gitlabProjectId, t.iid)],
 );
 
 // ── Shipments: one per (ticket, branch) ──────────────────────────────
+
+export type TimelineEntry = { at: string; event: string; data?: Record<string, unknown> };
 
 export const shipments = pgTable(
   "shipments",
@@ -97,9 +112,9 @@ export const shipments = pgTable(
     ticketId: integer("ticket_id")
       .notNull()
       .references(() => tickets.id, { onDelete: "cascade" }),
-    branch: text("branch"), // null while waiting on a Branch label
+    branch: text("branch"), // null while needs_branch
     status: shipmentStatus("status").notNull(),
-    /** Dev who receives the draft DM (assignee → MR author → label applier). */
+    /** Dev who receives the draft DM (assignee → MR author → label applier). NULL while unclaimed. */
     recipientUserId: text("recipient_user_id").references(() => user.id),
     recipientGitlabId: bigint("recipient_gitlab_id", { mode: "number" }),
     notesDraft: text("notes_draft"),
@@ -112,13 +127,24 @@ export const shipments = pgTable(
     dmMessageTs: text("dm_message_ts"),
     feedMessageTs: text("feed_message_ts"),
     reminderSentAt: timestamp("reminder_sent_at", { withTimezone: true }),
-    /** Re-ship history (reopen → Done again on same branch). */
-    timeline: jsonb("timeline").$type<Array<{ at: string; event: string }>>().notNull().default([]),
+    /** "Pedir nova verificação" is allowed at most once per hour per shipment (D41). */
+    lastReverifyRequestedAt: timestamp("last_reverify_requested_at", { withTimezone: true }),
+    /** Every transition, re-ship and verification change, in order. */
+    timeline: jsonb("timeline").$type<TimelineEntry[]>().notNull().default([]),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
   },
   (t) => [
-    uniqueIndex("shipments_ticket_branch").on(t.ticketId, t.branch),
+    uniqueIndex("shipments_ticket_branch")
+      .on(t.ticketId, t.branch)
+      .where(sql`${t.branch} is not null`),
+    // At most one branchless (needs_branch) shipment per ticket.
+    uniqueIndex("shipments_ticket_no_branch")
+      .on(t.ticketId)
+      .where(sql`${t.branch} is null`),
     index("shipments_status").on(t.status),
     index("shipments_published_at").on(t.publishedAt),
   ],
@@ -162,9 +188,14 @@ export const verifications = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id),
+    /** Can change (issue_reported ↔ verified); each change is written to the shipment timeline. */
     kind: verificationKind("kind").notNull(),
     commentId: integer("comment_id").references(() => comments.id),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
   },
   (t) => [uniqueIndex("verifications_shipment_user").on(t.shipmentId, t.userId)],
 );

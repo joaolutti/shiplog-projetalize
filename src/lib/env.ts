@@ -1,5 +1,6 @@
 /**
- * Typed environment. Parsed lazily so `next build` and tooling work without secrets.
+ * Typed environment. Each variable is parsed on first read, so `next build`, tooling and
+ * milestones that don't need a variable yet (e.g. Slack during M1) work without it.
  * See .env.example for descriptions.
  */
 import { z } from "zod";
@@ -39,9 +40,15 @@ const schema = z.object({
 
 export type Env = z.infer<typeof schema>;
 
-let cached: Env | undefined;
+const cache = new Map<keyof Env, unknown>();
 
-export function env(): Env {
-  cached ??= schema.parse(process.env);
-  return cached;
+export function env<K extends keyof Env>(key: K): Env[K] {
+  if (!cache.has(key)) {
+    const result = schema.shape[key].safeParse(process.env[key]);
+    if (!result.success) {
+      throw new Error(`Invalid env ${key}: ${z.prettifyError(result.error)}`);
+    }
+    cache.set(key, result.data);
+  }
+  return cache.get(key) as Env[K];
 }

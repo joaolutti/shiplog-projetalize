@@ -16,6 +16,7 @@ export const ACTIONS = {
   weightOther: "weight.other",
   verify: "shipment.verify",
   reportIssue: "shipment.report_issue",
+  requestReverification: "shipment.request_reverification",
 } as const;
 
 export type ActionId = (typeof ACTIONS)[keyof typeof ACTIONS];

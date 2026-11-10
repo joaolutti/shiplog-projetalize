@@ -1,0 +1,17 @@
+default:
+  image: node:22
+  before_script:
+    - npm install -g bun@1.4.4
+  cache:
+    key: { files: [bun.lock] }
+    paths: [.bun-cache/]
+
+check:
+  variables:
+    BUN_INSTALL_CACHE_DIR: .bun-cache
+  script:
+    - bun install --frozen-lockfile
+    - bun run typecheck
+    - bun run lint
+    - bun run test
+    - bun run build

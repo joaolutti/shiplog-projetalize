@@ -1,12 +1,13 @@
 /**
- * Background worker (Render "worker" service): `npm run worker`.
+ * Background worker (Render "worker" service): `bun run worker`.
  * Runs pg-boss on the app database; registers one handler per queue in ./jobs.
  */
 import { PgBoss } from "pg-boss";
+import { env } from "@/lib/env";
 import { JOBS } from "./jobs";
 
 async function main() {
-  const boss = new PgBoss(process.env.DATABASE_URL!);
+  const boss = new PgBoss(env("DATABASE_URL"));
   boss.on("error", (err) => console.error("[worker] pg-boss error", err));
   await boss.start();
 

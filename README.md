@@ -4,14 +4,19 @@ Turns `Development: Done` in GitLab into a published, verifiable, discussable sh
 No more hand-written Slack posts.
 
 **Read [`SCOPE.md`](./SCOPE.md) first.** It has the flow, the decisions and the milestones.
+[`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) has the system design and
+[`docs/SETUP.md`](./docs/SETUP.md) the full local setup.
 
-> Status: scaffold only (M0). Entry points throw `Not implemented (<milestone>)`.
+> Status: M1 (Ingest) in progress. Entry points not yet built throw `Not implemented (<milestone>)`.
 
 ## Layout
 
 ```
 SCOPE.md                     project scope & decisions
 HANDOFF.md                   full context + decision log for a new session
+docs/
+  ARCHITECTURE.md            processes, layers, state machine, ingest pipeline
+  SETUP.md                   local setup on Bun + Node, Next.js 16 notes
 config/
   data-policy.yaml           per-repo rules for what may be sent to an LLM (v1.5)
   weight-rubric.md           team weight rubric (inserted into the prompt)
@@ -36,13 +41,16 @@ src/
     llm/                     provider-agnostic model (OpenAI-compatible)
     auth/                    Better Auth config (M2)
     env.ts                   typed env (zod)
-  worker/                    pg-boss worker: `npm run worker`
+  worker/                    pg-boss worker: `bun run worker`
 scripts/eval-weights.ts      compare candidate models on calibration set (v1.5)
 tests/                       behaviour specs as it.todo, filled per milestone
 render.yaml                  Render Blueprint: web + worker + Postgres
 ```
 
 ## Local development
+
+Needs **Bun 1.4.4** (installs, scripts, worker) and **Node 22** (Next.js runs on Node).
+See [`docs/SETUP.md`](./docs/SETUP.md) for details.
 
 ```bash
 cp .env.example .env
@@ -53,26 +61,31 @@ docker compose up -d db
 ```
 
 ```bash
-npm install
+bun install
 ```
 
 ```bash
-npm run db:generate && npm run db:migrate
+bun run db:migrate
 ```
 
 ```bash
-npm run dev
+bun run dev
 ```
 
 ```bash
-npm run worker
+bun run worker
 ```
+
+After changing `src/lib/db/schema.ts` or `auth-schema.ts`, run `bun run db:generate` and
+commit the new file in `drizzle/`.
 
 To receive GitLab webhooks and Slack interactions locally, expose port 3000 with a
 tunnel (e.g. `cloudflared tunnel --url http://localhost:3000`) and point a **test**
 project webhook and a dev Slack app at it.
 
 ## Scripts
+
+Run with `bun run <script>`.
 
 | Script | |
 |---|---|

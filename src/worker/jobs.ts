@@ -8,6 +8,7 @@ export const JOBS = {
   notifyRequester: "notify-requester",
   refreshMergeRequests: "refresh-merge-requests",
   handleSlackInteraction: "handle-slack-interaction",
+  requestReverification: "request-reverification",
   reviewWeight: "review-weight", // v1.5
 } as const;
 
