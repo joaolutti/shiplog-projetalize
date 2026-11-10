@@ -1,12 +1,6 @@
 /** Behaviour spec for M1/M3 shipment rules (SCOPE.md §4). */
 import { describe, it } from "vitest";
 
-describe("resolveRecipient", () => {
-  it.todo("prefers the issue assignee");
-  it.todo("falls back to the linked MR author, then to the label applier");
-  it.todo("returns userId null (→ unclaimed) when the GitLab user has no linked account");
-});
-
 describe("ingest", () => {
   it.todo("creates one shipment per (ticket, branch)");
   it.todo("nudges when Done is applied without a Branch label");
