@@ -1,0 +1,19 @@
+{
+  "id": 90210,
+  "iid": 12,
+  "project_id": 501,
+  "title": "Exportar relatorio em CSV",
+  "description": "Solicitante: @maria\n\nPrecisamos exportar o relatorio.",
+  "state": "opened",
+  "created_at": "2026-10-01T12:00:00.000Z",
+  "updated_at": "2026-10-03T09:30:00.000Z",
+  "closed_at": null,
+  "labels": ["Development: Done", "Branch: Staging"],
+  "milestone": null,
+  "assignees": [{ "id": 7, "username": "ana", "name": "Ana" }, { "id": 9, "username": "bruno", "name": "Bruno" }],
+  "assignee": { "id": 7, "username": "ana", "name": "Ana" },
+  "author": { "id": 3, "username": "maria", "name": "Maria" },
+  "weight": 3,
+  "web_url": "https://gitlab.example.com/acme/app/-/issues/12",
+  "references": { "short": "#12", "relative": "#12", "full": "acme/app#12" }
+}
