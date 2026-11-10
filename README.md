@@ -7,7 +7,7 @@ No more hand-written Slack posts.
 [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) has the system design and
 [`docs/SETUP.md`](./docs/SETUP.md) the full local setup.
 
-> Status: M1 (Ingest) in progress. Entry points not yet built throw `Not implemented (<milestone>)`.
+> Status: M1 (Ingest) done. Entry points for later milestones throw `Not implemented (<milestone>)`.
 
 ## Layout
 
@@ -42,7 +42,11 @@ src/
     auth/                    Better Auth config (M2)
     env.ts                   typed env (zod)
   worker/                    pg-boss worker: `bun run worker`
-scripts/eval-weights.ts      compare candidate models on calibration set (v1.5)
+scripts/
+  link-gitlab.ts             link a GitLab user to a Shiplog user by hand (until M2)
+  replay-event.ts            re-run ingest for a stored gitlab_events row
+  fake-gitlab.ts             local stand-in for the GitLab API (end-to-end runs without a token)
+  eval-weights.ts            compare candidate models on calibration set (v1.5)
 tests/                       behaviour specs as it.todo, filled per milestone
 render.yaml                  Render Blueprint: web + worker + Postgres
 ```
@@ -78,6 +82,29 @@ bun run worker
 
 After changing `src/lib/db/schema.ts` or `auth-schema.ts`, run `bun run db:generate` and
 commit the new file in `drizzle/`.
+
+### Tests
+
+`bun run test` runs everything. The database tests need `TEST_DATABASE_URL` (see `.env.example`)
+and a database created once with `CREATE DATABASE shiplog_test`; without it they're skipped.
+
+### Running ingest end to end without GitLab
+
+```bash
+bun run scripts/link-gitlab.ts 11 dev.one@example.com "Dev One" dev
+```
+
+```bash
+FAKE_MR_STATE=opened bun run scripts/fake-gitlab.ts
+```
+
+Then start `bun run worker` and the web app with `GITLAB_BASE_URL=http://localhost:4010`,
+`GITLAB_API_TOKEN=fake` and a `GITLAB_WEBHOOK_SECRET`, and POST
+`tests/fixtures/webhooks/issue-done.json` (then `mr-merged.json`) to `/api/webhooks/gitlab` with the
+`X-Gitlab-Token`, `X-Gitlab-Event` and `X-Gitlab-Event-UUID` headers. The worker logs each `NextStep`;
+`bun run scripts/replay-event.ts <id>` re-runs one event.
+
+### Real webhooks
 
 To receive GitLab webhooks and Slack interactions locally, expose port 3000 with a
 tunnel (e.g. `cloudflared tunnel --url http://localhost:3000`) and point a **test**

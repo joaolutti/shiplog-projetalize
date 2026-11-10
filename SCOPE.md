@@ -1,6 +1,6 @@
 # Shiplog — Project Scope
 
-> Status: **M1 (Ingest) in progress.**
+> Status: **M1 (Ingest) done**, verified end to end against a local fake GitLab. Next: M2 (Identity).
 > Last updated: 2026-11-10. System design: [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
 > Decisions made after the handoff are in §13.
 
@@ -283,7 +283,7 @@ The code is provider-agnostic: the AI SDK with an OpenAI-compatible base URL, co
 | # | Milestone | Done when |
 |---|---|---|
 | M0 | Scaffold + scope | ✅ This repo |
-| M1 | **Ingest**: webhook receiver, event store, label parsing, ticket/shipment upsert, related MRs, nudge decisions | Applying `Development: Done` on a test issue creates the right shipment (logged, no Slack yet) |
+| M1 | **Ingest**: webhook receiver, event store, label parsing, ticket/shipment upsert, related MRs, nudge decisions | Applying `Development: Done` on a test issue creates the right shipment (logged, no Slack yet). ✅ Locally with `scripts/fake-gitlab.ts`; a run against a real test project waits on a GitLab token + webhook |
 | M2 | **Identity**: Slack sign-in, GitLab connect, roles, unclaimed queue | All 9 dev-team accounts linked |
 | M3 | **Slack DM flow**: draft DM, edit modal, hold-until-merged, reminder, auto-publish, channel card, requester DM | A full ship happens without anyone typing a message |
 | M4 | **Web app**: feed + filters (date, branch, label, dev, requester, verification), ticket page, thread, verify/report, DM notifications | The team stops using the channel for discussion |
@@ -296,9 +296,10 @@ The code is provider-agnostic: the AI SDK with an OpenAI-compatible base URL, co
 - [ ] Leads choose the calibration tickets (`config/calibration.yaml`).
 - [ ] Add an optional `Solicitante:` line to the issue template and `## Notas de entrega` to the MR template.
 - [ ] Visão geral (`/overview`): M4 or v2?
-- [ ] Proposed: the recipient is the *first linked* candidate in D4 order; `unclaimed` only when none is linked.
-- [ ] Proposed: an MR closed without merging no longer blocks the hold gate.
-- [ ] Proposed: a re-ship (reopen → Done again, same branch) reuses the same shipment row with a new draft cycle.
+- [ ] Confirm (implemented this way in M1): the recipient is the *first linked* candidate in D4 order; `unclaimed` only when none is linked.
+- [ ] Confirm (implemented this way in M1): an MR closed without merging no longer blocks the hold gate.
+- [ ] Confirm (implemented this way in M1): a re-ship (reopen → Done again, same branch) reuses the same shipment row with a new draft cycle.
+- [ ] Confirm (implemented this way in M1): a shipment still waiting on the hold question moves on to the draft once no related MR is open.
 - [ ] Who creates the Slack app (workspace admin) and the GitLab group token/webhook (group Owner)?
 - [ ] Who owns Render billing and the LLM account?
 - [ ] Fill in `config/data-policy.yaml` with the real groups/projects.
