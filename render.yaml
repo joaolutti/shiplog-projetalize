@@ -1,0 +1,58 @@
+# Render Blueprint — see SCOPE.md §10. Plans omitted on purpose; choose in the dashboard.
+envVarGroups:
+  - name: shiplog-secrets
+    envVars:
+      - key: BETTER_AUTH_SECRET
+        generateValue: true
+      - key: SLACK_CLIENT_ID
+        sync: false
+      - key: SLACK_CLIENT_SECRET
+        sync: false
+      - key: SLACK_TEAM_ID
+        sync: false
+      - key: SLACK_BOT_TOKEN
+        sync: false
+      - key: SLACK_SIGNING_SECRET
+        sync: false
+      - key: SLACK_FEED_CHANNEL_ID
+        sync: false
+      - key: GITLAB_GROUP_PATH
+        sync: false
+      - key: GITLAB_WEBHOOK_SECRET
+        sync: false
+      - key: GITLAB_API_TOKEN
+        sync: false
+      - key: GITLAB_OAUTH_CLIENT_ID
+        sync: false
+      - key: GITLAB_OAUTH_CLIENT_SECRET
+        sync: false
+      - key: LLM_API_KEY
+        sync: false
+
+services:
+  - type: web
+    name: shiplog-web
+    runtime: docker
+    dockerCommand: npm run start
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: shiplog-db
+          property: connectionString
+      - fromGroup: shiplog-secrets
+
+  - type: worker
+    name: shiplog-worker
+    runtime: docker
+    dockerCommand: npm run worker
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: shiplog-db
+          property: connectionString
+      - fromGroup: shiplog-secrets
+
+databases:
+  - name: shiplog-db
+    databaseName: shiplog

@@ -1,0 +1,36 @@
+# What Shiplog may send to the LLM, per GitLab namespace. See SCOPE.md §8.
+#
+# Levels:
+#   diff      – redacted diff hunks + file paths + per-file stats + MR title/description
+#   metadata  – file paths + per-file stats + MR title/description (no code)
+#   excluded  – aggregate counts only (no paths, no text)
+#
+# Resolution: most specific match wins (project → subgroup → group → default).
+# Anything not listed falls back to `default`.
+
+default: metadata
+
+groups:
+  # your-group/platform: diff
+  # your-group/payments: metadata
+
+projects:
+  # your-group/shared/auth-lib: metadata
+  # your-group/infra/terraform: excluded
+
+# Always stripped from diffs, regardless of level.
+exclude_paths:
+  - "**/.env*"
+  - "**/secrets/**"
+  - "**/*.pem"
+  - "**/*.key"
+  - "**/package-lock.json"
+  - "**/yarn.lock"
+  - "**/pnpm-lock.yaml"
+  - "**/*.min.js"
+  - "**/dist/**"
+  - "**/generated/**"
+  - "**/__snapshots__/**"
+
+# Diffs larger than this (after exclusions) are downgraded to `metadata`.
+max_diff_bytes: 60000

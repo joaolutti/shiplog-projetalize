@@ -1,0 +1,10 @@
+# Reference tickets with lead-agreed weights. Used as (a) few-shot examples in the
+# weight-review prompt and (b) the ground truth for scripts/eval-weights.ts.
+#
+# TODO(leads): pick 10–20 past tickets covering the whole scale.
+
+tickets: []
+#  - project: your-group/billing-svc
+#    iid: 412
+#    agreed_weight: 5
+#    note: "Touched billing + auth; assigned 3, should have been 5"
