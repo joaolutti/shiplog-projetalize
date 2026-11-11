@@ -45,6 +45,7 @@ src/
 scripts/
   link-gitlab.ts             link a GitLab user to a Shiplog user by hand (until M2)
   replay-event.ts            re-run ingest for a stored gitlab_events row
+  set-role.ts                set a user's role by email (e.g. the first lead)
   fake-gitlab.ts             local stand-in for the GitLab API (end-to-end runs without a token)
   eval-weights.ts            compare candidate models on calibration set (v1.5)
 tests/                       behaviour specs as it.todo, filled per milestone

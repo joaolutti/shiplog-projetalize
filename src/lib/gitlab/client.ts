@@ -215,3 +215,20 @@ export async function getMergeRequestDiffs(
 ): Promise<Array<{ path: string; diff: string }>> {
   return notImplemented("getMergeRequestDiffs", "v1.5");
 }
+
+/**
+ * Access level of a user in a group or project, counting inherited membership (members/all),
+ * or null when they aren't a member. A 403 (the token can't list members) throws.
+ */
+export async function getMemberAccessLevel(
+  scope: { group: string } | { project: string | number },
+  userId: number,
+): Promise<number | null> {
+  const base = "group" in scope ? `/groups/${enc(scope.group)}` : `/projects/${enc(scope.project)}`;
+  try {
+    return (await getJson<{ access_level: number }>(`${base}/members/all/${enc(userId)}`)).access_level;
+  } catch (err) {
+    if (err instanceof GitlabApiError && err.status === 404) return null;
+    throw err;
+  }
+}

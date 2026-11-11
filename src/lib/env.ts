@@ -19,6 +19,8 @@ const schema = z.object({
 
   GITLAB_BASE_URL: z.url().default("https://gitlab.com"),
   GITLAB_GROUP_PATH: z.string().min(1),
+  /** Fallback for the "Connect GitLab" membership check when the token can't list group members (a project token in development). */
+  GITLAB_MEMBERSHIP_PROJECT: z.string().optional(),
   GITLAB_WEBHOOK_SECRET: z.string().min(1),
   GITLAB_API_TOKEN: z.string().min(1),
   GITLAB_OAUTH_CLIENT_ID: z.string().min(1),

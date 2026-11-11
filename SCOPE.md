@@ -161,6 +161,11 @@ GitLab.com webhooks and the API usually **redact emails**, so accounts can't be 
   checking the team ID claim.
 - **Connect GitLab** (devs and leads only): GitLab OAuth, `read_user` scope. This stores the GitLab user ID ↔ Shiplog user
   mapping. Membership of the top-level group is checked when linking.
+- **Roles in practice (M2).** Everyone starts as `member`. Connecting GitLab (only possible with Developer access
+  or more in the top-level group) makes a member a `dev`. Leads change roles in Configurações; the last lead can't
+  step down. The first lead is set with `scripts/set-role.ts`. GitLab is never a way to sign in.
+- **Membership check.** Uses the server's GitLab token. A project token (development) can't list group members, so
+  `GITLAB_MEMBERSHIP_PROJECT` names a project to check instead; production uses the group token and leaves it unset.
 - **Requesters** never need GitLab: they're resolved from the issue template's `Solicitante:` name through Slack.
 - **Unlinked GitLab user** → the shipment becomes `unclaimed`, the leads get a DM, and it appears in the web app queue.
 

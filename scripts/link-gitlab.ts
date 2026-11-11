@@ -23,7 +23,10 @@ if (!["member", "dev", "lead"].includes(role)) {
 const [existing] = await db().select().from(user).where(eq(user.email, email));
 const userId = existing?.id ?? randomUUID();
 if (!existing) {
-  await db().insert(user).values({ id: userId, email, name, role: role as "member" | "dev" | "lead" });
+  // Marked verified: a lead vouches for the email, so Slack sign-in with it attaches here.
+  await db()
+    .insert(user)
+    .values({ id: userId, email, name, emailVerified: true, role: role as "member" | "dev" | "lead" });
 }
 
 await db()
