@@ -4,7 +4,8 @@
  *
  * Each command: authorize → load the shipment FOR UPDATE → transition (state.ts) →
  * persist the change plus a timeline entry → return the follow-up step. Commands run
- * inside the caller's transaction; the caller queues follow-up jobs after commit.
+ * inside the caller's transaction; the caller queues the follow-up jobs in that
+ * same transaction (effects.ts `execute` / `dispatch`).
  *
  * M1: what ingest needs. M2: the leads' unclaimed queue. M3: everything the Slack messages
  * trigger (gates, draft, verification). requestReverification and the weight review come later.

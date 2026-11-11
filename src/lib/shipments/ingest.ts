@@ -14,7 +14,8 @@
  *   - update the MR snapshot on linked shipments; release held shipments once no MR is open
  *
  * GitLab is only read here (the issue is always refetched). State changes for existing
- * shipments go through commands.ts; this module only creates new shipments.
+ * shipments go through commands.ts; this module only creates new shipments. The follow-up
+ * jobs are queued in the same transaction (effects.ts).
  */
 import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
@@ -42,6 +43,7 @@ import {
   type Tx,
 } from "./commands";
 import { nextStepFor, weightMismatch, type NextStep } from "./next-step";
+import { dispatch } from "./effects";
 import { resolveRecipient, type Recipient } from "./recipient";
 import { gateStatus } from "./state";
 
@@ -168,6 +170,7 @@ async function ingestIssueHook(p: IssueHook): Promise<NextStep[]> {
         }),
       );
     }
+    await dispatch(tx, steps);
     return steps;
   });
 }
@@ -411,6 +414,7 @@ async function ingestMergeRequestHook(p: MergeRequestHook): Promise<NextStep[]> 
         steps.push({ kind: "noop", reason: `shipment ${shipmentId}: MR ${mr.id} updated` });
       }
     }
+    await dispatch(tx, steps);
     return steps;
   });
 }

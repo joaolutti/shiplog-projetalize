@@ -8,7 +8,7 @@ import { comments, shipments, tickets, user, verifications } from "@/lib/db/sche
 import { env } from "@/lib/env";
 import { parseRequester } from "@/lib/gitlab/templates";
 import { autoPublish } from "@/lib/shipments/commands";
-import { dispatch } from "@/lib/shipments/effects";
+import { execute } from "@/lib/shipments/effects";
 import { leadSlackIds, loadShipment, slackIdOf, usersBySlackId } from "@/lib/shipments/view";
 import {
   commentReply,
@@ -87,15 +87,17 @@ export async function sendReminder({ shipmentId, cycle }: TimerJob): Promise<voi
 
 /** Publishes an unanswered draft as is, flagged "notas não confirmadas" (D8). */
 export async function runAutoPublish({ shipmentId, cycle }: TimerJob): Promise<void> {
-  const step = await db().transaction((tx) => autoPublish(tx, { actor: { kind: "system" }, shipmentId, cycle }));
+  const step = await execute((tx) => autoPublish(tx, { actor: { kind: "system" }, shipmentId, cycle }));
   log("auto-publish", `${shipmentId}: ${JSON.stringify(step)}`);
-  await dispatch([step]);
 }
 
 /** Channel card (D9), then the recipient's DM shows "publicada" and the requester is DMed (D11). */
 export async function publishShipment({ shipmentId }: ShipmentJob): Promise<void> {
-  const s = await loadShipment(shipmentId);
-  if (!s || s.view.status !== "published") return;
+  const loaded = await loadShipment(shipmentId);
+  if (!loaded || loaded.view.status !== "published") return;
+  // A lead publishing an unclaimed shipment skips the draft, where the requester is usually matched.
+  await resolveTicketRequester(loaded.ticketId);
+  const s = (await loadShipment(shipmentId))!;
 
   const channel = env("SLACK_FEED_CHANNEL_ID");
   const card = feedCard(s.view);

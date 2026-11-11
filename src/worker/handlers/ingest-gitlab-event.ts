@@ -3,12 +3,12 @@
  * ingest, record the outcome on gitlab_events. A failure is recorded and rethrown so
  * pg-boss retries it.
  *
- * The NextStep[] becomes Slack jobs (effects.ts) once ingest has committed.
+ * Ingest queues the Slack jobs for the NextStep[] in its own transaction (effects.ts), so a
+ * failure here retries the whole event and loses nothing.
  */
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { gitlabEvents } from "@/lib/db/schema";
-import { dispatch } from "@/lib/shipments/effects";
 import { ingestGitlabEvent, type NextStep } from "@/lib/shipments/ingest";
 
 export interface IngestGitlabEventJob {
@@ -33,7 +33,6 @@ export async function handleIngestGitlabEvent(
       .set({ processedAt: new Date(), error: null })
       .where(eq(gitlabEvents.id, eventId));
     for (const step of steps) console.log(`[ingest] event ${eventId}:`, JSON.stringify(step));
-    await dispatch(steps);
     return steps;
   } catch (err) {
     await db()

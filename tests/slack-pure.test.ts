@@ -1,7 +1,7 @@
 /** M3 pure pieces: request signing, DM allowlist, requester matching, Block Kit snapshots. */
 import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { ACTIONS, feedCard, leadsUnclaimedDm, recipientDm, reminderReply, requesterDm } from "@/lib/slack/blocks";
+import { ACTIONS, editNotesModal, feedCard, leadsUnclaimedDm, recipientDm, reminderReply, requesterDm } from "@/lib/slack/blocks";
 import { dmTarget } from "@/lib/slack/client";
 import { matchRequester, normalizeName, type DirectoryUser } from "@/lib/slack/directory";
 import { FIXTURES } from "@/lib/slack/fixtures";
@@ -85,6 +85,17 @@ describe("Block Kit messages", () => {
     expect(JSON.stringify(recipientDm(FIXTURES.draftWithMentions, opts).blocks)).toContain('"initial_users":["U0QA","U0PM"]');
     expect(JSON.stringify(feedCard(FIXTURES.published).blocks)).toContain("cc <@U0QA>");
     expect(JSON.stringify(feedCard(FIXTURES.publishedAuto).blocks)).not.toContain("cc ");
+  });
+
+  it("keeps every section under Slack's 3000-character limit and the edit modal under its max_length", () => {
+    const v = { ...FIXTURES.published, notes: "&&<>\n".repeat(2000) };
+    for (const msg of [recipientDm(v, opts), feedCard(v), requesterDm(v, null)]) {
+      for (const block of msg.blocks) {
+        if (block.type === "section" && block.text) expect(block.text.text.length).toBeLessThanOrEqual(3000);
+      }
+    }
+    const input = editNotesModal(v).blocks[0] as { element: { initial_value?: string; max_length: number } };
+    expect(input.element.initial_value!.length).toBeLessThanOrEqual(input.element.max_length);
   });
 
   it("escapes mrkdwn in issue titles and notes", () => {

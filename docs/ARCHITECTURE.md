@@ -63,7 +63,7 @@ Each command runs the same five steps:
 2. **Load** the shipment, locking its row (`SELECT … FOR UPDATE`).
 3. **Transition** by calling `state.ts`, which returns the new state or a typed error such as "already published".
 4. **Persist** the change and a `timeline` entry in one transaction.
-5. **Queue** the follow-up jobs (DMs, channel card, Slack message updates) after commit.
+5. **Queue** the follow-up jobs (DMs, channel card, Slack message updates) in the same transaction (pg-boss writes the jobs through it), so a state change and its jobs commit together.
 
 All jobs are idempotent, keyed by shipment and purpose, so a retry never posts twice.
 

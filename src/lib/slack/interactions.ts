@@ -4,7 +4,6 @@
  * runs here in the worker.
  */
 import { z } from "zod";
-import { db } from "@/lib/db/client";
 import {
   addComment,
   CommandError,
@@ -19,7 +18,7 @@ import {
   verify,
   type Actor,
 } from "@/lib/shipments/commands";
-import { dispatch } from "@/lib/shipments/effects";
+import { execute } from "@/lib/shipments/effects";
 import type { NextStep } from "@/lib/shipments/next-step";
 import { ensureSlackUser, loadShipment, usersBySlackId } from "@/lib/shipments/view";
 import type { ModalView } from "@slack/types";
@@ -97,12 +96,10 @@ export function needsWork(payload: InteractionPayload): boolean {
   return ![ACTIONS.openLink, ACTIONS.editNotes, ACTIONS.addComment, ACTIONS.reportIssue].includes(id as never);
 }
 
-/** Runs the command behind an interaction (in the worker), then its follow-ups. */
+/** Runs the command behind an interaction (in the worker), with its follow-ups. */
 export async function handleInteraction(payload: InteractionPayload): Promise<NextStep | null> {
   try {
-    const step = await runCommand(payload);
-    if (step) await dispatch([step]);
-    return step;
+    return await runCommand(payload);
   } catch (err) {
     if (err instanceof CommandError && payload.type === "block_actions") {
       await respondEphemeral(payload.response_url, messageFor(err));
@@ -121,15 +118,15 @@ async function runCommand(payload: InteractionPayload): Promise<NextStep | null>
     switch (payload.view.callback_id) {
       case MODALS.editNotes: {
         const actor = await teamActor(slackUserId);
-        return db().transaction((tx) => editNotes(tx, { actor, shipmentId, notes: text }));
+        return execute((tx) => editNotes(tx, { actor, shipmentId, notes: text }));
       }
       case MODALS.addComment: {
         const actor = await anyoneActor(slackUserId);
-        return (await db().transaction((tx) => addComment(tx, { actor, shipmentId, body: text, source: "slack_dm" }))).step;
+        return execute(async (tx) => (await addComment(tx, { actor, shipmentId, body: text, source: "slack_dm" })).step);
       }
       case MODALS.reportIssue: {
         const actor = await anyoneActor(slackUserId);
-        return db().transaction((tx) => reportIssue(tx, { actor, shipmentId, comment: text, source: "slack_dm" }));
+        return execute((tx) => reportIssue(tx, { actor, shipmentId, comment: text, source: "slack_dm" }));
       }
       default:
         return null;
@@ -140,36 +137,36 @@ async function runCommand(payload: InteractionPayload): Promise<NextStep | null>
   switch (a.action_id) {
     case ACTIONS.confirmPublish: {
       const actor = await teamActor(slackUserId);
-      return db().transaction((tx) => confirm(tx, { actor, shipmentId: Number(a.value) }));
+      return execute((tx) => confirm(tx, { actor, shipmentId: Number(a.value) }));
     }
     case ACTIONS.holdUntilMerged: {
       const actor = await teamActor(slackUserId);
-      return db().transaction((tx) => holdUntilMerged(tx, { actor, shipmentId: Number(a.value) }));
+      return execute((tx) => holdUntilMerged(tx, { actor, shipmentId: Number(a.value) }));
     }
     case ACTIONS.publishAnyway: {
       const actor = await teamActor(slackUserId);
-      return db().transaction((tx) => publishAnyway(tx, { actor, shipmentId: Number(a.value) }));
+      return execute((tx) => publishAnyway(tx, { actor, shipmentId: Number(a.value) }));
     }
     case ACTIONS.pickBranch: {
       const actor = await teamActor(slackUserId);
       const { shipmentId, branch } = z.object({ shipmentId: z.number(), branch: z.string() }).parse(JSON.parse(a.value ?? ""));
-      return db().transaction((tx) => pickBranch(tx, { actor, shipmentId, branch }));
+      return execute((tx) => pickBranch(tx, { actor, shipmentId, branch }));
     }
     case ACTIONS.pickRequester: {
       if (!a.selected_user || !a.block_id?.startsWith(REQUESTER_BLOCK)) return null;
       const actor = await teamActor(slackUserId);
       const shipmentId = Number(a.block_id.slice(REQUESTER_BLOCK.length));
-      return db().transaction((tx) => pickRequester(tx, { actor, shipmentId, slackUserId: a.selected_user! }));
+      return execute((tx) => pickRequester(tx, { actor, shipmentId, slackUserId: a.selected_user! }));
     }
     case ACTIONS.pickMentions: {
       if (!a.block_id?.startsWith(MENTIONS_BLOCK)) return null;
       const actor = await teamActor(slackUserId);
       const shipmentId = Number(a.block_id.slice(MENTIONS_BLOCK.length));
-      return db().transaction((tx) => setMentions(tx, { actor, shipmentId, slackUserIds: a.selected_users ?? [] }));
+      return execute((tx) => setMentions(tx, { actor, shipmentId, slackUserIds: a.selected_users ?? [] }));
     }
     case ACTIONS.verify: {
       const actor = await anyoneActor(slackUserId);
-      return db().transaction((tx) => verify(tx, { actor, shipmentId: Number(a.value) }));
+      return execute((tx) => verify(tx, { actor, shipmentId: Number(a.value) }));
     }
     default:
       return null;

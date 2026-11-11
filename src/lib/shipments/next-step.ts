@@ -1,4 +1,4 @@
-/** What should happen after ingest or a command. effects.ts turns these into jobs after commit. */
+/** What should happen after ingest or a command. effects.ts turns these into jobs in the same transaction. */
 import type { ShipmentStatus } from "./state";
 
 export type NextStep =

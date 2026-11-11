@@ -8,7 +8,21 @@ import { db } from "@/lib/db/client";
 import { account, gitlabEvents, shipmentMergeRequests, shipments, tickets, user, verifications } from "@/lib/db/schema";
 import type { GitlabIssue, RelatedMergeRequest } from "@/lib/gitlab/client";
 import { ingestGitlabEvent } from "@/lib/shipments/ingest";
+import { handleIngestGitlabEvent } from "@/worker/handlers/ingest-gitlab-event";
 import { hasDb, resetDb } from "./helpers/db";
+
+// ── Queue mock: records jobs; `failNext` makes the next enqueue throw ──
+
+const queue = vi.hoisted(() => ({ jobs: [] as string[], failNext: false }));
+vi.mock("@/lib/jobs/queue", () => ({
+  enqueue: async (name: string) => {
+    if (queue.failNext) {
+      queue.failNext = false;
+      throw new Error("queue down");
+    }
+    queue.jobs.push(name);
+  },
+}));
 
 // ── GitLab mock ──────────────────────────────────────────────────────
 
@@ -127,6 +141,8 @@ beforeEach(async () => {
   gitlab.issue = issue([]);
   gitlab.mrs = [mr(5045, "merged")];
   gitlab.calls = 0;
+  queue.jobs = [];
+  queue.failNext = false;
 });
 
 // ── Specs ────────────────────────────────────────────────────────────
@@ -159,6 +175,34 @@ describe.skipIf(!hasDb)("ingest: Done added", () => {
 
     const [m] = await db().select().from(shipmentMergeRequests);
     expect(m).toMatchObject({ gitlabMrId: 5045, state: "merged", filesChanged: 3, additions: 40, deletions: 5 });
+  });
+
+  it("a failed enqueue rolls the shipment back, so the retry creates it and queues its jobs", async () => {
+    await linkDev();
+    gitlab.issue = issue(["Branch: Staging", DONE]);
+    const asLabels = (titles: string[]) => titles.map((title, i) => ({ id: i + 1, title }));
+    const [event] = await db()
+      .insert(gitlabEvents)
+      .values({
+        eventUuid: "uuid-retry",
+        eventType: "Issue Hook",
+        payload: {
+          user: { id: PM },
+          project: { id: 777, path_with_namespace: "acme/billing-svc" },
+          object_attributes: { id: ISSUE_ID, iid: 412, project_id: 777, action: "update" },
+          labels: asLabels(["Branch: Staging", DONE]),
+          changes: { labels: { previous: asLabels(["Branch: Staging"]), current: asLabels(["Branch: Staging", DONE]) } },
+        },
+      })
+      .returning();
+
+    queue.failNext = true;
+    await expect(handleIngestGitlabEvent({ eventId: event.id })).rejects.toThrow("queue down");
+    expect(await allShipments()).toEqual([]);
+
+    await handleIngestGitlabEvent({ eventId: event.id });
+    expect((await allShipments()).map((s) => s.status)).toEqual(["pending_confirmation"]);
+    expect(queue.jobs).toEqual(["sync-recipient-dm", "send-reminder", "auto-publish"]);
   });
 
   it("creates a shipment for each Branch label", async () => {

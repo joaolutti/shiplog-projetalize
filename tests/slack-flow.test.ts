@@ -142,7 +142,7 @@ beforeEach(async () => {
 describe.skipIf(!hasDb)("draft → confirm → publish → verify", () => {
   it("send_draft syncs the DM and schedules the reminder and auto-publish for this draft cycle", async () => {
     const s = await seed();
-    await dispatch([{ kind: "send_draft", shipmentId: s.id, weightMismatch: null }]);
+    await db().transaction((tx) => dispatch(tx, [{ kind: "send_draft", shipmentId: s.id, weightMismatch: null }]));
     expect(jobNames()).toEqual(["sync-recipient-dm", "send-reminder", "auto-publish"]);
     const cycle = "2026-11-11T12:00:00.000Z";
     expect(queue.jobs[1]).toMatchObject({
@@ -234,7 +234,7 @@ describe.skipIf(!hasDb)("buttons and modals", () => {
     await handleInteraction(submit("U_DEV", MODALS.addComment, s.id, "Testado em staging"));
     const [own] = await db().select().from(comments);
     expect(own).toMatchObject({ body: "Testado em staging", ticketId: s.ticketId, shipmentId: s.id });
-    expect(queue.jobs).toEqual([{ name: "notify-comment", data: { shipmentId: s.id, commentId: own.id }, options: undefined }]);
+    expect(queue.jobs).toEqual([{ name: "notify-comment", data: { shipmentId: s.id, commentId: own.id }, options: {} }]);
     await notifyComment({ shipmentId: s.id, commentId: own.id });
     expect(slackApi.sent).toEqual([]);
 
@@ -293,6 +293,14 @@ describe.skipIf(!hasDb)("timers and leads", () => {
     await runAutoPublish({ shipmentId: s.id, cycle });
     expect(await shipment(s.id)).toMatchObject({ status: "published", publishedVia: "auto", notesFinal: "Corrige o login." });
     expect(jobNames()).toEqual(["publish-shipment"]);
+  });
+
+  it("a lead publishing an unclaimed shipment still tags and DMs the requester", async () => {
+    const s = await seed("unclaimed");
+    await db().update(shipments).set({ status: "published", publishedVia: "lead" }).where(eq(shipments.id, s.id));
+    await publishShipment({ shipmentId: s.id });
+    expect(slackApi.sent.map((m) => m.kind + ":" + m.to)).toEqual(["post:C_FEED", "dm:U_ANA"]);
+    expect((await db().select().from(tickets))[0]).toMatchObject({ requesterSlackId: "U_ANA", requesterSource: "template" });
   });
 
   it("leads are DMed once about an unclaimed shipment", async () => {

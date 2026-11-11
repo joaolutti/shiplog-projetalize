@@ -79,11 +79,17 @@ const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 
 const issueLink = (v: ShipmentView) => `<${v.ticket.webUrl}|#${v.ticket.iid} ${esc(v.ticket.title)}>`;
 
-const quote = (text: string) =>
-  esc(text)
+/** Slack rejects a section over 3000 characters; this leaves room for a short heading. */
+const MAX_QUOTE = 2800;
+
+/** Quoted, escaped text, cut to MAX_QUOTE without splitting an escape like `&amp;`. */
+const quote = (text: string) => {
+  const quoted = esc(text)
     .split("\n")
     .map((l) => `> ${l}`)
     .join("\n");
+  return quoted.length <= MAX_QUOTE ? quoted : `${quoted.slice(0, MAX_QUOTE).replace(/&[a-z]*$/, "")}…`;
+};
 
 function button(text: string, actionId: ActionId, value: string, style?: "primary" | "danger"): Button {
   return { type: "button", text: { type: "plain_text", text, emoji: true }, action_id: actionId, value, ...(style ? { style } : {}) };
@@ -407,7 +413,8 @@ export function editNotesModal(v: Pick<ShipmentView, "id" | "notes">): ModalView
     title: "Editar notas",
     label: "Notas da entrega",
     submit: "Salvar",
-    initial: v.notes,
+    // Slack refuses to open the modal when initial_value is longer than max_length.
+    initial: v.notes?.slice(0, 2000),
     hint: "Aparece no feed e no canal. Escreva para quem não é dev.",
   });
 }
