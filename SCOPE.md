@@ -1,7 +1,6 @@
 # Shiplog — Project Scope
 
-> Status: **M1 (Ingest) and M2 (Identity) done**, verified against the real GitLab project and Slack workspace
-> through the dev tunnel. Next: M3 (Slack DM flow). Hosting stays local until v1.
+> Status: **M1–M3 done; M4 (web app) built**, pending the team's real use. Hosting stays local until v1.
 > Last updated: 2026-11-10. System design: [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
 > Decisions made after the handoff are in §13.
 
@@ -335,7 +334,7 @@ The code is provider-agnostic: the AI SDK with an OpenAI-compatible base URL, co
 - [ ] Add `## Notas de entrega` to the MR template.
 - [ ] Production needs a **group** access token (D29). A project token only sees its own project, so related MRs in
       other repos come back empty: on `p1429/predialize` every sampled Done issue showed 0 related MRs.
-- [ ] Visão geral (`/overview`): M4 or v2?
+- [x] ~~Visão geral: M4 or v2?~~ M4, as the home page (`/`); Entregas moved to `/feed`.
 - [ ] Confirm (implemented this way in M1): the recipient is the *first linked* candidate in D4 order; `unclaimed` only when none is linked.
 - [ ] Confirm (implemented this way in M1): an MR closed without merging no longer blocks the hold gate.
 - [ ] Confirm (implemented this way in M1): a re-ship (reopen → Done again, same branch) reuses the same shipment row with a new draft cycle.

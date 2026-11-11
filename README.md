@@ -105,6 +105,11 @@ Then start `bun run worker` and the web app with `GITLAB_BASE_URL=http://localho
 `X-Gitlab-Token`, `X-Gitlab-Event` and `X-Gitlab-Event-UUID` headers. The worker logs each `NextStep`;
 `bun run scripts/replay-event.ts <id>` re-runs one event.
 
+### Seeing the app as someone else (development)
+
+`http://localhost:3000/dev/as?email=<user email>` signs your browser in as that user without Slack, to check
+roles and pages; `/dev/as` signs out. Only from this machine, never in production or through the tunnel.
+
 ### Slack messages
 
 `/dev/slack-preview` (development only) shows every Slack message from fixtures, with a link to open each in

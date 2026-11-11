@@ -1,7 +1,7 @@
 /**
  * Better Auth (M2, D14–D17):
  *   - Slack (OIDC) is the only way to sign in, restricted to SLACK_TEAM_ID
- *   - GitLab (read_user) is linked once from Configurações; group members only.
+ *   - GitLab (read_user) is linked once from Sua conta; group members only.
  *     Linking promotes a `member` to `dev`. Leads are set by a lead or scripts/set-role.ts.
  *   - Drizzle adapter over src/lib/db/auth-schema.ts; `user.role` is an additional field
  *

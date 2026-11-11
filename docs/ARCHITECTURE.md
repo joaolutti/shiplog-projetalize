@@ -199,14 +199,19 @@ The scaffold's URLs are kept in English. All interface text is pt-BR.
 
 | Route | Page | Milestone |
 |---|---|---|
-| `/` | Entregas feed. Filters (date, branch, label, dev, requester, verification) live in `searchParams` | M4 |
-| `/overview` | Visão geral **(open: M4 or v2)** | — |
+| `/` | Visão geral: this week's team totals, verification, "Precisa de atenção", team activity by day, recent shipments (D38) | M4 |
+| `/feed` | Entregas. Filters (period, branch, dev, requester, verification, search) live in `searchParams`; cards or list | M4 |
 | `/tickets/[id]` | Ticket: shipments, Staging→Main track, MR stats, thread, verify/report/re-verify, weight panel (dev/lead) | M4 |
 | `/unclaimed` | Leads' queue | M2 |
 | `/settings` | Slack/GitLab connections, roles (leads edit), "o que o Shiplog nunca faz" | M2 |
 | `/dev/slack-preview` | Renders the Block Kit builders with fixtures. **Development only** (404 in production) | M3 |
 
-The prototype's "ver como" switcher becomes a development-only impersonation cookie, rejected in production.
+The prototype's "ver como" switcher is `/dev/as?email=…`: a development-only cookie that stands in for a session. It's
+refused in production and for any request that didn't come from the machine itself (the dev server is reachable
+through the Cloudflare tunnel, so requests with `cf-*` headers, a non-local host or a non-loopback forwarded IP are
+refused). `/dev/as` with no email clears it.
+
+Signed-in pages live in the `(app)` route group, whose layout is the sidebar + top bar. `/sign-in` is outside it.
 
 ### Rendering
 
@@ -234,6 +239,8 @@ each mirrors a web component (draft ↔ ShipmentCard, requester DM ↔ VerifyBut
 - The prototype's CSS tokens become Tailwind 4 `@theme` variables in `src/app/globals.css`.
 - Dark theme only, as in the prototype.
 - Fonts: Geist and Geist Mono via `next/font`. Icons: Material Symbols.
+- **Patch**, the pirate mascot (`public/patch-*.svg|png`), is the logo: sidebar mark, favicon (`src/app/icon.png`,
+  `apple-icon.png`) and the sign-in page. Prefer him over the old hexagon mark everywhere.
 - Accent colors: purple `#7136ff` for active and primary, orange `#ff6633` for alerts.
 
 ---

@@ -45,7 +45,7 @@ export async function checkIdentity(
     if (source.action !== "link-account") {
       return {
         error: "gitlab_link_only",
-        message: "Entre com o Slack e conecte o GitLab em Configurações.",
+        message: "Entre com o Slack e conecte o GitLab em Sua conta.",
       };
     }
     const gitlabUserId = Number(profile.id);

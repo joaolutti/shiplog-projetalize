@@ -4,7 +4,7 @@
  * The role is read from the database each time, so a role change applies immediately.
  */
 import { and, eq } from "drizzle-orm";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { cache } from "react";
 import { db } from "@/lib/db/client";
@@ -24,14 +24,34 @@ export interface Viewer {
   gitlabId: number | null;
 }
 
+export const DEV_AS_COOKIE = "shiplog_dev_as";
+
+/**
+ * "Ver como" (docs/ARCHITECTURE.md §7): in development, a cookie can stand in for a session to
+ * see the app as another user. Only for requests made on this machine: the dev server is also
+ * reachable through the Cloudflare tunnel, and anything that came through it is refused.
+ */
+export function devImpersonationAllowed(h: Headers): boolean {
+  if (process.env.NODE_ENV === "production") return false;
+  if ([...h.keys()].some((k) => k.startsWith("cf-"))) return false;
+  const loopback = (ip: string) => ["::1", "127.0.0.1", "::ffff:127.0.0.1"].includes(ip.trim());
+  const forwarded = h.get("x-forwarded-for");
+  if (forwarded && !forwarded.split(",").every(loopback)) return false;
+  const host = (h.get("host") ?? "").replace(/:\d+$/, "");
+  return host === "localhost" || host === "127.0.0.1";
+}
+
 export const getViewer = cache(async (): Promise<Viewer | null> => {
-  const session = await auth().api.getSession({ headers: await headers() });
-  if (!session) return null;
+  const h = await headers();
+  const session = await auth().api.getSession({ headers: h });
+  const devAs = !session && devImpersonationAllowed(h) ? (await cookies()).get(DEV_AS_COOKIE)?.value : undefined;
+  const userId = session?.user.id ?? devAs;
+  if (!userId) return null;
 
   const [row] = await db()
     .select({ id: user.id, name: user.name, email: user.email, image: user.image, role: user.role })
     .from(user)
-    .where(eq(user.id, session.user.id));
+    .where(eq(user.id, userId));
   if (!row) return null;
 
   const [gitlab] = await db()
