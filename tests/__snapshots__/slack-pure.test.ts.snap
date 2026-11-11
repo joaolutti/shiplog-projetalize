@@ -31,6 +31,23 @@ exports[`Block Kit messages > matches the snapshots 1`] = `
         "type": "section",
       },
       {
+        "accessory": {
+          "action_id": "shipment.pick_mentions",
+          "placeholder": {
+            "text": "Escolher pessoas",
+            "type": "plain_text",
+          },
+          "type": "multi_users_select",
+        },
+        "block_id": "mentions:7",
+        "text": {
+          "text": "*Marcar no anúncio*
+Quem mais deve ser marcado no card do canal?",
+          "type": "mrkdwn",
+        },
+        "type": "section",
+      },
+      {
         "block_id": "draft",
         "elements": [
           {
@@ -124,6 +141,23 @@ exports[`Block Kit messages > matches the snapshots 1`] = `
         "type": "section",
       },
       {
+        "accessory": {
+          "action_id": "shipment.pick_mentions",
+          "placeholder": {
+            "text": "Escolher pessoas",
+            "type": "plain_text",
+          },
+          "type": "multi_users_select",
+        },
+        "block_id": "mentions:7",
+        "text": {
+          "text": "*Marcar no anúncio*
+Quem mais deve ser marcado no card do canal?",
+          "type": "mrkdwn",
+        },
+        "type": "section",
+      },
+      {
         "block_id": "draft",
         "elements": [
           {
@@ -210,6 +244,23 @@ exports[`Block Kit messages > matches the snapshots 1`] = `
         "type": "context",
       },
       {
+        "accessory": {
+          "action_id": "shipment.pick_mentions",
+          "placeholder": {
+            "text": "Escolher pessoas",
+            "type": "plain_text",
+          },
+          "type": "multi_users_select",
+        },
+        "block_id": "mentions:7",
+        "text": {
+          "text": "*Marcar no anúncio*
+Quem mais deve ser marcado no card do canal?",
+          "type": "mrkdwn",
+        },
+        "type": "section",
+      },
+      {
         "block_id": "draft",
         "elements": [
           {
@@ -275,6 +326,15 @@ exports[`Block Kit messages > matches the snapshots 1`] = `
           "type": "mrkdwn",
         },
         "type": "section",
+      },
+      {
+        "elements": [
+          {
+            "text": "cc <@U0QA>",
+            "type": "mrkdwn",
+          },
+        ],
+        "type": "context",
       },
       {
         "block_id": "feed",
@@ -513,6 +573,15 @@ Era para o usuário 11 do GitLab, que ainda não conectou o Shiplog.",
           "type": "mrkdwn",
         },
         "type": "section",
+      },
+      {
+        "elements": [
+          {
+            "text": "cc <@U0QA>",
+            "type": "mrkdwn",
+          },
+        ],
+        "type": "context",
       },
       {
         "block_id": "published",

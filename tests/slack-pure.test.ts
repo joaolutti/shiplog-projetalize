@@ -80,6 +80,13 @@ describe("Block Kit messages", () => {
     expect(JSON.stringify(recipientDm(FIXTURES.draft, opts).blocks)).not.toContain(ACTIONS.pickRequester);
   });
 
+  it("the draft offers the mention picker, pre-filled; the card and published DM tag them", () => {
+    expect(JSON.stringify(recipientDm(FIXTURES.draft, opts).blocks)).toContain(ACTIONS.pickMentions);
+    expect(JSON.stringify(recipientDm(FIXTURES.draftWithMentions, opts).blocks)).toContain('"initial_users":["U0QA","U0PM"]');
+    expect(JSON.stringify(feedCard(FIXTURES.published).blocks)).toContain("cc <@U0QA>");
+    expect(JSON.stringify(feedCard(FIXTURES.publishedAuto).blocks)).not.toContain("cc ");
+  });
+
   it("escapes mrkdwn in issue titles and notes", () => {
     const v = { ...FIXTURES.draft, ticket: { ...FIXTURES.draft.ticket, title: "<b>&" }, notes: "a < b" };
     const text = JSON.stringify(recipientDm(v, opts).blocks);

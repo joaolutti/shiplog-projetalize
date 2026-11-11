@@ -22,6 +22,13 @@
       "when": 1794424987043,
       "tag": "0002_slack_flow",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794426906447,
+      "tag": "0003_mentions",
+      "breakpoints": true
     }
   ]
 }

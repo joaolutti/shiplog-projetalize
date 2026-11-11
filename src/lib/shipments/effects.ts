@@ -38,6 +38,9 @@ export async function dispatch(steps: NextStep[]): Promise<void> {
       case "verification_changed":
         await enqueue(JOBS.syncRequesterDm, job);
         break;
+      case "comment_added":
+        await enqueue(JOBS.notifyComment, { ...job, commentId: step.commentId });
+        break;
       case "issue_reported":
         await enqueue(JOBS.syncRequesterDm, job);
         await enqueue(JOBS.notifyIssueReported, { ...job, commentId: step.commentId });

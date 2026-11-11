@@ -5,6 +5,7 @@
 import { notFound } from "next/navigation";
 import {
   commentModal,
+  commentReply,
   editNotesModal,
   feedCard,
   issueReportedDm,
@@ -22,6 +23,7 @@ const SAMPLES: Array<{ title: string; payload: object; modal?: boolean }> = [
   { title: "Rascunho (DM do dev)", payload: recipientDm(FIXTURES.draft, opts) },
   { title: "Rascunho: solicitante não encontrado", payload: recipientDm(FIXTURES.draftUnresolvedRequester, opts) },
   { title: "Rascunho: peso diferente do rótulo", payload: recipientDm(FIXTURES.draftWeightMismatch, opts) },
+  { title: "Rascunho: pessoas marcadas", payload: recipientDm(FIXTURES.draftWithMentions, opts) },
   { title: "Sem branch", payload: recipientDm(FIXTURES.needsBranch, opts) },
   { title: "MRs abertos", payload: recipientDm(FIXTURES.openMrs, opts) },
   { title: "Aguardando merge", payload: recipientDm(FIXTURES.held, opts) },
@@ -32,6 +34,7 @@ const SAMPLES: Array<{ title: string; payload: object; modal?: boolean }> = [
   { title: "Card no canal: publicação automática", payload: feedCard(FIXTURES.publishedAuto) },
   { title: "DM do solicitante", payload: requesterDm(FIXTURES.published, null) },
   { title: "DM do solicitante: verificou", payload: requesterDm(FIXTURES.published, "verified") },
+  { title: "Comentário (thread do rascunho)", payload: commentReply("U0QA", "Ana", "Testei em staging, ok!") },
   { title: "Problema reportado (DM do dev)", payload: issueReportedDm(FIXTURES.published, "U0REQUESTER", "O botão ainda falha no iPhone.") },
   { title: "Modal: editar notas", payload: editNotesModal(FIXTURES.draft), modal: true },
   { title: "Modal: comentar", payload: commentModal(7), modal: true },

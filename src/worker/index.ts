@@ -8,6 +8,7 @@ import type { InteractionPayload } from "@/lib/slack/interactions";
 import { handleInteraction } from "@/lib/slack/interactions";
 import { handleIngestGitlabEvent, type IngestGitlabEventJob } from "./handlers/ingest-gitlab-event";
 import {
+  notifyComment,
   notifyIssueReported,
   notifyLeadsUnclaimed,
   publishShipment,
@@ -43,6 +44,7 @@ async function main() {
   await boss.work<ShipmentJob>(JOBS.publishShipment, each(publishShipment));
   await boss.work<ShipmentJob>(JOBS.syncRequesterDm, each(syncRequesterDm));
   await boss.work<ShipmentJob & { commentId: number }>(JOBS.notifyIssueReported, each(notifyIssueReported));
+  await boss.work<ShipmentJob & { commentId: number }>(JOBS.notifyComment, each(notifyComment));
   await boss.work<{ payload: InteractionPayload }>(
     JOBS.handleSlackInteraction,
     each(({ payload }: { payload: InteractionPayload }) => handleInteraction(payload)),

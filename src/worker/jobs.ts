@@ -11,6 +11,8 @@ export const JOBS = {
   /** Post or update the requester's DM (Verificar / Reportar problema). */
   syncRequesterDm: "sync-requester-dm",
   notifyIssueReported: "notify-issue-reported",
+  /** Reply in the recipient's DM thread with a new comment. */
+  notifyComment: "notify-comment",
   refreshMergeRequests: "refresh-merge-requests",
   handleSlackInteraction: "handle-slack-interaction",
   requestReverification: "request-reverification",

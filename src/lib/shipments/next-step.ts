@@ -12,6 +12,7 @@ export type NextStep =
   | { kind: "refresh"; shipmentId: number }
   | { kind: "verification_changed"; shipmentId: number }
   | { kind: "issue_reported"; shipmentId: number; commentId: number }
+  | { kind: "comment_added"; shipmentId: number; commentId: number }
   | { kind: "noop"; reason: string };
 
 /** Native weight field vs `Weight: X` label. The native field wins; the dev DM says so (D21). */

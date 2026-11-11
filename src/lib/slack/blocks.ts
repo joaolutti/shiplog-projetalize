@@ -16,6 +16,7 @@ export const ACTIONS = {
   publishAnyway: "shipment.publish_anyway",
   pickBranch: "shipment.pick_branch",
   pickRequester: "shipment.pick_requester",
+  pickMentions: "shipment.pick_mentions",
   weightAgree: "weight.agree",
   weightKeepAssigned: "weight.keep_assigned",
   weightOther: "weight.other",
@@ -37,8 +38,9 @@ export const MODALS = {
 
 export type ModalId = (typeof MODALS)[keyof typeof MODALS];
 
-/** Block ID prefix of the requester picker in the draft DM. */
+/** Block ID prefixes of the pickers in the draft DM (select menus carry no value of their own). */
 export const REQUESTER_BLOCK = "requester:";
+export const MENTIONS_BLOCK = "mentions:";
 
 /** Field IDs inside the modals (block_id and action_id). */
 export const FIELDS = { text: "text" } as const;
@@ -64,6 +66,8 @@ export interface ShipmentView {
     | { kind: "resolved"; slackUserId: string }
     | { kind: "unresolved"; raw: string };
   mergeRequests: Array<{ ref: string; title: string; webUrl: string; state: string }>;
+  /** Slack users the dev chose to @mention on the channel card. */
+  mentions: string[];
   /** GitLab user it was meant for, when unclaimed. */
   intendedGitlabId: number | null;
 }
@@ -120,6 +124,11 @@ function mrText(v: ShipmentView): string | null {
 function detailsContext(v: ShipmentView): KnownBlock[] {
   const parts = [v.ticket.projectPath, mrText(v), requesterText(v)].filter(Boolean) as string[];
   return [context(parts.join(" · "))];
+}
+
+/** "cc @a @b" for the people the dev tagged, or null. */
+function mentionsText(v: ShipmentView): string | null {
+  return v.mentions.length ? `cc ${v.mentions.map((id) => `<@${id}>`).join(" ")}` : null;
 }
 
 function notesBlock(v: ShipmentView): KnownBlock {
@@ -216,6 +225,18 @@ function draftDm(v: ShipmentView, autoPublishHours: number): SlackMessage {
     });
   }
 
+  blocks.push({
+    type: "section",
+    block_id: `${MENTIONS_BLOCK}${v.id}`,
+    text: { type: "mrkdwn", text: "*Marcar no anúncio*\nQuem mais deve ser marcado no card do canal?" },
+    accessory: {
+      type: "multi_users_select",
+      action_id: ACTIONS.pickMentions,
+      placeholder: { type: "plain_text", text: "Escolher pessoas" },
+      ...(v.mentions.length ? { initial_users: v.mentions } : {}),
+    },
+  });
+
   blocks.push(
     actions("draft", [
       button("Confirmar e publicar", ACTIONS.confirmPublish, String(v.id), "primary"),
@@ -240,6 +261,7 @@ function publishedDm(v: ShipmentView): SlackMessage {
     blocks: [
       section(`:white_check_mark: ${issueLink(v)} → *${esc(v.branch ?? "?")}*: ${how}.`),
       notesBlock(v),
+      ...(mentionsText(v) ? [context(mentionsText(v)!)] : []),
       actions("published", [linkButton("Abrir no Shiplog", v.url)]),
     ],
   };
@@ -284,6 +306,7 @@ export function feedCard(v: ShipmentView): SlackMessage {
     blocks: [
       section(`:ship: *Entregue em ${esc(v.branch ?? "?")}*\n${issueLink(v)}${requester}`),
       ...(v.notes ? [section(quote(v.notes))] : []),
+      ...(mentionsText(v) ? [context(mentionsText(v)!)] : []),
       ...unconfirmed,
       actions("feed", [linkButton("Abrir no Shiplog", v.url)]),
     ],
@@ -317,6 +340,15 @@ export function requesterDm(v: ShipmentView, answered: "verified" | "issue_repor
     );
   }
   return { text: `Entregue em ${v.branch}: #${v.ticket.iid} ${v.ticket.title}`, blocks };
+}
+
+/** Thread reply under the recipient's DM when someone comments on the shipment. */
+export function commentReply(authorSlackId: string | null, authorName: string, body: string): SlackMessage {
+  const who = authorSlackId ? `<@${authorSlackId}>` : esc(authorName);
+  return {
+    text: `Comentário de ${authorName}`,
+    blocks: [section(`:speech_balloon: ${who} comentou:\n${quote(body)}`), context("Fica no histórico da entrega no Shiplog.")],
+  };
 }
 
 /** DM to the dev when someone reports a problem. */

@@ -133,6 +133,8 @@ export const shipments = pgTable(
     reminderSentAt: timestamp("reminder_sent_at", { withTimezone: true }),
     /** Leads were DMed about this unclaimed shipment (once per shipment). */
     leadsNotifiedAt: timestamp("leads_notified_at", { withTimezone: true }),
+    /** Slack users the dev chose to @mention on the channel card. */
+    mentionSlackIds: jsonb("mention_slack_ids").$type<string[]>().notNull().default([]),
     requesterDmChannelId: text("requester_dm_channel_id"),
     requesterDmTs: text("requester_dm_ts"),
     /** "Pedir nova verificação" is allowed at most once per hour per shipment (D41). */

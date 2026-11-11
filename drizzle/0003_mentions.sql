@@ -1,0 +1,1 @@
+ALTER TABLE "shipments" ADD COLUMN "mention_slack_ids" jsonb DEFAULT '[]'::jsonb NOT NULL;

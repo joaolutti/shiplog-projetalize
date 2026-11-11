@@ -7,9 +7,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/lib/db/client";
 import { account, comments, shipments, tickets, user, verifications } from "@/lib/db/schema";
 import { dispatch } from "@/lib/shipments/effects";
-import { ACTIONS, MODALS, FIELDS, REQUESTER_BLOCK } from "@/lib/slack/blocks";
+import { ACTIONS, MENTIONS_BLOCK, MODALS, FIELDS, REQUESTER_BLOCK } from "@/lib/slack/blocks";
 import { handleInteraction, type InteractionPayload } from "@/lib/slack/interactions";
 import {
+  notifyComment,
   notifyLeadsUnclaimed,
   publishShipment,
   runAutoPublish,
@@ -222,6 +223,34 @@ describe.skipIf(!hasDb)("buttons and modals", () => {
       click("U_DEV", ACTIONS.pickRequester, "", { block_id: `${REQUESTER_BLOCK}${s.id}`, selected_user: "U_PICKED" }),
     );
     expect((await db().select().from(tickets))[0]).toMatchObject({ requesterSlackId: "U_PICKED", requesterSource: "dev_picked" });
+  });
+
+  it("Comentar saves to the ticket thread and replies under the draft DM", async () => {
+    const s = await seed();
+    await syncRecipientDm({ shipmentId: s.id });
+    queue.jobs = [];
+    slackApi.sent = [];
+
+    await handleInteraction(submit("U_DEV", MODALS.addComment, s.id, "Testado em staging"));
+    const [comment] = await db().select().from(comments);
+    expect(comment).toMatchObject({ body: "Testado em staging", ticketId: s.ticketId, shipmentId: s.id });
+    expect(queue.jobs).toEqual([{ name: "notify-comment", data: { shipmentId: s.id, commentId: comment.id }, options: undefined }]);
+
+    await notifyComment({ shipmentId: s.id, commentId: comment.id });
+    expect(slackApi.sent).toEqual([{ kind: "reply", to: "D_U_DEV/1", text: "Comentário de Dev" }]);
+  });
+
+  it("Marcar no anúncio stores who to @mention; the card tags them", async () => {
+    const s = await seed();
+    await handleInteraction(
+      click("U_DEV", ACTIONS.pickMentions, "", { block_id: `${MENTIONS_BLOCK}${s.id}`, selected_users: ["U_QA", "U_PM", "U_QA"] }),
+    );
+    expect((await shipment(s.id)).mentionSlackIds).toEqual(["U_QA", "U_PM"]);
+    expect(jobNames()).toEqual(["sync-recipient-dm"]);
+
+    // Clearing the picker removes them.
+    await handleInteraction(click("U_DEV", ACTIONS.pickMentions, "", { block_id: `${MENTIONS_BLOCK}${s.id}`, selected_users: [] }));
+    expect((await shipment(s.id)).mentionSlackIds).toEqual([]);
   });
 
   it("a branch button answers the branch gate", async () => {

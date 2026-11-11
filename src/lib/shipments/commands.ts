@@ -388,7 +388,25 @@ export async function addComment(
     .insert(comments)
     .values({ ticketId: shipment.ticketId, shipmentId: shipment.id, authorUserId: args.actor.userId, body, source: args.source })
     .returning({ id: comments.id });
-  return { step: { kind: "noop", reason: `comment ${comment.id} added` }, commentId: comment.id };
+  return { step: { kind: "comment_added", shipmentId: shipment.id, commentId: comment.id }, commentId: comment.id };
+}
+
+/** "Marcar no anúncio": who gets @mentioned on the channel card (the requester always is). */
+export async function setMentions(
+  tx: Tx,
+  args: { actor: Actor; shipmentId: number; slackUserIds: string[] },
+): Promise<NextStep> {
+  const shipment = await loadForUpdate(tx, args.shipmentId);
+  authorizeGateAnswer(args.actor, shipment);
+  const mentions = [...new Set(args.slackUserIds)].slice(0, 20);
+  await tx
+    .update(shipments)
+    .set({
+      mentionSlackIds: mentions,
+      timeline: [...shipment.timeline, timelineEntry("mentions_set", { by: actorId(args.actor), mentions })],
+    })
+    .where(eq(shipments.id, shipment.id));
+  return { kind: "refresh", shipmentId: shipment.id };
 }
 
 // ── M3: verification (D12, D41) ──────────────────────────────────────

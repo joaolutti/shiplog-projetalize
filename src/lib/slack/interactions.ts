@@ -15,6 +15,7 @@ import {
   pickRequester,
   publishAnyway,
   reportIssue,
+  setMentions,
   verify,
   type Actor,
 } from "@/lib/shipments/commands";
@@ -22,13 +23,23 @@ import { dispatch } from "@/lib/shipments/effects";
 import type { NextStep } from "@/lib/shipments/next-step";
 import { ensureSlackUser, loadShipment, usersBySlackId } from "@/lib/shipments/view";
 import type { ModalView } from "@slack/types";
-import { ACTIONS, commentModal, editNotesModal, FIELDS, MODALS, REQUESTER_BLOCK, reportIssueModal } from "./blocks";
+import {
+  ACTIONS,
+  commentModal,
+  editNotesModal,
+  FIELDS,
+  MENTIONS_BLOCK,
+  MODALS,
+  REQUESTER_BLOCK,
+  reportIssueModal,
+} from "./blocks";
 
 const action = z.object({
   action_id: z.string(),
   block_id: z.string().optional(),
   value: z.string().optional(),
   selected_user: z.string().optional(),
+  selected_users: z.array(z.string()).optional(),
 });
 
 const blockActions = z.object({
@@ -149,6 +160,12 @@ async function runCommand(payload: InteractionPayload): Promise<NextStep | null>
       const actor = await teamActor(slackUserId);
       const shipmentId = Number(a.block_id.slice(REQUESTER_BLOCK.length));
       return db().transaction((tx) => pickRequester(tx, { actor, shipmentId, slackUserId: a.selected_user! }));
+    }
+    case ACTIONS.pickMentions: {
+      if (!a.block_id?.startsWith(MENTIONS_BLOCK)) return null;
+      const actor = await teamActor(slackUserId);
+      const shipmentId = Number(a.block_id.slice(MENTIONS_BLOCK.length));
+      return db().transaction((tx) => setMentions(tx, { actor, shipmentId, slackUserIds: a.selected_users ?? [] }));
     }
     case ACTIONS.verify: {
       const actor = await anyoneActor(slackUserId);

@@ -65,6 +65,7 @@ export async function loadShipment(shipmentId: number): Promise<LoadedShipment |
         state: mr.state,
       })),
       intendedGitlabId: s.recipientGitlabId,
+      mentions: s.mentionSlackIds,
     },
     ticketId: t.id,
     recipientUserId: s.recipientUserId,

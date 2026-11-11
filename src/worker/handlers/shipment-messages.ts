@@ -4,13 +4,21 @@
  */
 import { and, eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { comments, shipments, tickets, verifications } from "@/lib/db/schema";
+import { comments, shipments, tickets, user, verifications } from "@/lib/db/schema";
 import { env } from "@/lib/env";
 import { parseRequester } from "@/lib/gitlab/templates";
 import { autoPublish } from "@/lib/shipments/commands";
 import { dispatch } from "@/lib/shipments/effects";
 import { leadSlackIds, loadShipment, slackIdOf, usersBySlackId } from "@/lib/shipments/view";
-import { feedCard, issueReportedDm, leadsUnclaimedDm, recipientDm, reminderReply, requesterDm } from "@/lib/slack/blocks";
+import {
+  commentReply,
+  feedCard,
+  issueReportedDm,
+  leadsUnclaimedDm,
+  recipientDm,
+  reminderReply,
+  requesterDm,
+} from "@/lib/slack/blocks";
 import { post, reply, sendDm, update } from "@/lib/slack/client";
 import { resolveRequester } from "@/lib/slack/directory";
 import type { ShipmentJob, TimerJob } from "../jobs";
@@ -137,4 +145,17 @@ export async function notifyIssueReported({ shipmentId, commentId }: ShipmentJob
   const recipientSlackId = s.recipientUserId ? await slackIdOf(s.recipientUserId) : null;
   const targets = recipientSlackId ? [recipientSlackId] : await leadSlackIds();
   for (const target of targets) await sendDm(target, message);
+}
+
+/** A new comment shows up in the thread of the recipient's DM (D13: the thread lives in Shiplog). */
+export async function notifyComment({ shipmentId, commentId }: ShipmentJob & { commentId: number }): Promise<void> {
+  const s = await loadShipment(shipmentId);
+  if (!s?.dm) return log("notify-comment", `${shipmentId}: no recipient DM to reply under`);
+  const [row] = await db()
+    .select({ body: comments.body, authorUserId: comments.authorUserId, authorName: user.name })
+    .from(comments)
+    .innerJoin(user, eq(user.id, comments.authorUserId))
+    .where(eq(comments.id, commentId));
+  if (!row) return;
+  await reply(s.dm, commentReply(await slackIdOf(row.authorUserId), row.authorName, row.body));
 }
