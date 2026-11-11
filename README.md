@@ -35,7 +35,7 @@ src/
     db/                      Drizzle schema (domain + Better Auth) and client
     gitlab/                  webhook verify, label parsing, read-only API client
     slack/                   signature verify, Web API client, Block Kit builders
-    shipments/               ingest, recipient resolution, publish
+    shipments/               state machine, commands, ingest, queries, effects
     weight/                  signals, structured output schema, review (v1.5)
     policy/                  data policy resolution, redaction (v1.5)
     llm/                     provider-agnostic model (OpenAI-compatible)
