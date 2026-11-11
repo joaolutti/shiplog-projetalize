@@ -14,15 +14,44 @@ function stripComments(markdown: string): string {
   return markdown.replace(/<!--[\s\S]*?-->/g, "");
 }
 
-/** `Solicitante: Ana Ribeiro`, `**Solicitante:** Ana`, `Solicitante: @ana.ribeiro`. Null when absent or empty. */
+/** Cells of a Markdown table row, or null when the line isn't one. */
+function tableCells(line: string | undefined): string[] | null {
+  const t = line?.trim() ?? "";
+  if (!t.startsWith("|")) return null;
+  return t.replace(/^\|/, "").replace(/\|$/, "").split("|").map((c) => c.trim());
+}
+
+const unemphasize = (s: string) => s.replace(/^[*_]+|[*_]+$/g, "").trim();
+
+/**
+ * The team's issue template puts it in a table: a header row with a "Solicitante" column,
+ * the separator row, then the data row. Returns the cell, or null when there's no such table.
+ */
+function requesterFromTable(lines: string[]): string | null {
+  for (let i = 0; i < lines.length; i++) {
+    const column = tableCells(lines[i])?.findIndex((c) => unemphasize(c).toLowerCase() === "solicitante");
+    if (column === undefined || column < 0) continue;
+    const separator = tableCells(lines[i + 1]);
+    if (!separator?.every((c) => /^:?-+:?$/.test(c))) continue;
+    return tableCells(lines[i + 2])?.[column] ?? "";
+  }
+  return null;
+}
+
+/**
+ * Requester from the issue description, in either form:
+ *   table:  | **Solicitante** | **Origem** | …  /  |---|---| …  /  | Ana Ribeiro | Suporte | …
+ *   line:   `Solicitante: Ana Ribeiro`, `**Solicitante:** Ana`, `Solicitante: @ana.ribeiro`
+ * Null when absent or empty.
+ */
 export function parseRequester(description: string | null | undefined): RequesterRef | null {
   if (!description) return null;
-  const match = stripComments(description).match(
-    /^[\s>*_-]*solicitante\s*(?::\s*[*_]*|[*_]+\s*:)[ \t]*(.*)$/im,
-  );
-  if (!match) return null;
+  const text = stripComments(description);
+  const line = text.match(/^[\s>*_-]*solicitante\s*(?::\s*[*_]*|[*_]+\s*:)[ \t]*(.*)$/im)?.[1];
+  const raw = line ?? requesterFromTable(text.split(/\r?\n/));
+  if (raw === null) return null;
 
-  const value = match[1].replace(/[*_]+$/g, "").replace(/^[*_]+/g, "").trim();
+  const value = unemphasize(raw);
   if (NO_REQUESTER.has(value.toLowerCase())) return null;
 
   const handle = value.match(/^@([\w.-]+)$/);

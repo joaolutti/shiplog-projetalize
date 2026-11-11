@@ -151,7 +151,8 @@ Nothing goes to Slack yet.
 
 - **The issue template has an optional `Solicitante: <name>` line.**
   - It's left empty for general updates (new features, improvements). In that case there's no requester DM.
-  - The parser accepts `Solicitante: Ana Ribeiro`, `**Solicitante:** Ana`, and `@ana.ribeiro`.
+  - The parser accepts the template's table (a `Solicitante` column, value in the first data row), and a
+    `Solicitante: Ana Ribeiro` / `**Solicitante:** Ana` line. Either can be a `@ana.ribeiro` handle.
   - Empty, `-` and `N/A` all mean no requester.
 - **Resolving the name to a Slack user.**
   - The worker compares it with the workspace directory (`users.list`, cached for 1 h).

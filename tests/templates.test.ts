@@ -31,6 +31,30 @@ describe("parseRequester", () => {
     expect(parseRequester("Solicitante: <!-- nome de quem pediu -->")).toBeNull();
   });
 
+  it("reads the team template's table (Solicitante column, first data row)", () => {
+    const description = [
+      "Contexto do chamado.",
+      "",
+      "|**Solicitante**|**Origem**|**Cliente**|**Empreendimento**|",
+      "|-----------------|---------------|-------------|--------------------|",
+      "|Ana Ribeiro|Suporte|Construtora X|-|",
+      "| **Urgência** | **Projeto** | **Módulo** | **Tipo** |",
+    ].join("\n");
+    expect(parseRequester(description)).toEqual({ kind: "name", value: "Ana Ribeiro" });
+  });
+
+  it("reads the table column wherever it is, and treats '-' or a missing row as none", () => {
+    const table = (row: string) =>
+      ["| **Origem** | **Solicitante** |", "|:---|:---:|", row].join("\n");
+    expect(parseRequester(table("| Suporte | @ana.ribeiro |"))).toEqual({ kind: "handle", value: "ana.ribeiro" });
+    expect(parseRequester(table("| Suporte | - |"))).toBeNull();
+    expect(parseRequester("| **Solicitante** |\n|---|")).toBeNull();
+  });
+
+  it("ignores a table header without the separator row", () => {
+    expect(parseRequester("| Solicitante | Origem |\n| Ana | Suporte |")).toBeNull();
+  });
+
   it("returns null when the line is missing or the word is only prose", () => {
     expect(parseRequester(null)).toBeNull();
     expect(parseRequester("Nova tela de relatórios")).toBeNull();

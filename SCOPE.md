@@ -133,8 +133,9 @@ and Slack handlers call the same commands.
 | Verification | Buttons, tracked per user |
 
 **Requester matching (D16 revised):**
-- Accepted forms: `Solicitante: Ana Ribeiro`, `**Solicitante:** Ana`, `@ana.ribeiro`. Empty, `-` and `N/A` mean no requester
-  (general updates such as new features have none).
+- The team's issue template already has it as a table: a `Solicitante` column header, the separator row, then
+  the value in the first data row. A `Solicitante: Ana Ribeiro` / `**Solicitante:** Ana` line also works, and
+  either can hold a `@handle`. Empty, `-` and `N/A` mean no requester (general updates such as new features have none).
 - Names are compared without case or accents against Slack `real_name` and `display_name` (`users.list`, cached 1 h).
   A `@handle` matches the Slack username.
 - One match → requester resolved. None or several → the draft DM asks the dev to pick a Slack user.
@@ -294,7 +295,10 @@ The code is provider-agnostic: the AI SDK with an OpenAI-compatible base URL, co
 
 - [ ] Confirm the Fibonacci scale's top value (13? 21?) and update the rubric (`config/weight-rubric.md`).
 - [ ] Leads choose the calibration tickets (`config/calibration.yaml`).
-- [ ] Add an optional `Solicitante:` line to the issue template and `## Notas de entrega` to the MR template.
+- [x] ~~Add `Solicitante` to the issue template~~: already there, as a table column (read since 2026-11-10).
+- [ ] Add `## Notas de entrega` to the MR template.
+- [ ] Production needs a **group** access token (D29). A project token only sees its own project, so related MRs in
+      other repos come back empty: on `p1429/predialize` every sampled Done issue showed 0 related MRs.
 - [ ] Visão geral (`/overview`): M4 or v2?
 - [ ] Confirm (implemented this way in M1): the recipient is the *first linked* candidate in D4 order; `unclaimed` only when none is linked.
 - [ ] Confirm (implemented this way in M1): an MR closed without merging no longer blocks the hold gate.
