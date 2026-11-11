@@ -137,7 +137,8 @@ How events turn into shipments:
 
 | Event | Result |
 |---|---|
-| Done newly added | One shipment per `Branch:` label on the ticket. With no branch label, one `needs_branch` shipment |
+| Done label or a trigger Status newly reached (D44) | One shipment per branch: a `Deployed <branch>` status's branch, else each `Branch:` label. With none, one `needs_branch` shipment |
+| `Deployed Staging` → `Deployed Main` | A new shipment for Main (promotion, like adding a Branch label) |
 | `Branch: X` added to a ticket that's already Done | A new shipment for X (promotion, D7) |
 | A label added again | Nothing. The unique index catches it |
 | MR Hook | Refresh the stats of linked shipments. If a shipment is `held` and no related MR is still open, `releaseHeld` |

@@ -60,7 +60,8 @@ The process works, but:
 ## 4. Core flow
 
 ```
-GitLab: "Development: Done" label added to an issue
+GitLab: "Development: Done" label added, or Status moved to Done / Deployed Main /
+        Deployed Staging (D44)
    │  group-level webhook (Issue Hook)
    ▼
 [1] Receive ── verify X-Gitlab-Token, store raw event (dedupe on X-Gitlab-Event-UUID),
@@ -99,10 +100,14 @@ GitLab: "Development: Done" label added to an issue
 
 ### Rules
 - **Recipient:** the issue assignee, then the author of the linked MR, then the user who applied the label.
-- **One trigger.** Only `Development: Done` creates a shipment. Merge Request events only update
-  MR state, for example to release a "held" shipment.
+- **Trigger (D44).** The `Development: Done` label, or the work item Status moving to one of
+  `STATUS_TRIGGERS` (default `Done`, `Deployed Main`, `Deployed Staging`). A `Deployed <branch>` status
+  names the branch itself; otherwise the `Branch:` labels do. Status is read from the webhook payload
+  (the REST API doesn't return it). Merge Request events only update MR state, for example to release a
+  "held" shipment.
 - **Branch promotion.** Shipments are unique per `(ticket, branch)`. Adding `Branch: Main` to a
-  ticket already shipped to Staging creates a second shipment. Removing and re-adding labels never duplicates.
+  ticket already shipped to Staging, or moving it from `Deployed Staging` to `Deployed Main`, creates a
+  second shipment. Removing and re-adding labels never duplicates.
 - **Reopen.** If a done issue is reopened and marked Done again on the same branch, the existing shipment is
   updated and a new "re-shipped" entry is added to its timeline, instead of creating another shipment.
 - **Weight mismatch.** If the native weight field and the `Weight: X` label disagree, the native
@@ -323,4 +328,5 @@ Numbered to continue the decision log in `HANDOFF.md` §3. Where they differ, th
 | D40 | Gate order: **recipient → branch → open MRs → draft**. Statuses: `unclaimed`, `needs_branch`, `awaiting_hold_decision`, `held`, `pending_confirmation`, `published`. `branch` is nullable, with partial unique indexes |
 | D41 | **The reporter can change their verification** from issue to verified. **"Pedir nova verificação"** DMs every reporter (dev or lead, at most once per hour per shipment) |
 | D42 | All dates and day buckets use `America/Sao_Paulo` |
+| D44 | **The ship trigger is the `Development: Done` label or a trigger work item Status** (`Done`, `Deployed Main`, `Deployed Staging`; configurable with `STATUS_TRIGGERS`). Replaces D2's label-only trigger: the board's Deployed columns are Status lists, which don't change labels, and Shiplog never writes to GitLab. `Deployed <branch>` implies the branch |
 | D43 | **Bun** is the package manager, script runner and worker runtime. **Next.js runs on Node 22.** Code under `src/` uses no Bun-only APIs. Replaces "npm + tsx" |

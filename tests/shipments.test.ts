@@ -306,7 +306,7 @@ describe.skipIf(!hasDb)("ingest: later label changes", () => {
 
   it("ignores edits of issues Shiplog doesn't know, without calling GitLab", async () => {
     const steps = await labelsChanged(["Bug"], ["Bug", "Frontend"]);
-    expect(steps).toEqual([{ kind: "noop", reason: `issue ${ISSUE_ID}: no Done or Branch label added` }]);
+    expect(steps).toEqual([{ kind: "noop", reason: `issue ${ISSUE_ID}: not triggered and no new branch` }]);
     expect(gitlab.calls).toBe(0);
     expect(await db().select().from(tickets)).toHaveLength(0);
   });
@@ -368,6 +368,74 @@ describe.skipIf(!hasDb)("ingest: Merge Request Hook", () => {
     expect(await mergeRequestEvent(9999, "merged")).toEqual([
       { kind: "noop", reason: "MR 9999 not linked to a shipment" },
     ]);
+  });
+});
+
+/** Issue Hook where the work item Status moved from `previous` to `current` (labels unchanged). */
+function statusChanged(previous: string, current: string, labels: string[] = []) {
+  gitlab.issue = issue(labels);
+  const status = (name: string) => ({ id: `gid://gitlab/WorkItems::Statuses::Custom::Status/${name}`, name, category: "done" });
+  return deliver("Issue Hook", {
+    object_kind: "issue",
+    user: { id: DEV },
+    project: { id: 777, path_with_namespace: "acme/billing-svc" },
+    object_attributes: { id: ISSUE_ID, iid: 412, project_id: 777, action: "update", status: status(current) },
+    labels: labels.map((title) => ({ title })),
+    changes: { status: { previous: status(previous), current: status(current) } },
+  });
+}
+
+describe.skipIf(!hasDb)("ingest: Status trigger (D44)", () => {
+  beforeEach(async () => {
+    await linkDev();
+  });
+
+  it("Deployed Staging ships to Staging without a Branch label and caches the status", async () => {
+    const steps = await statusChanged("In progress", "Deployed Staging");
+    const [s] = await allShipments();
+    expect(s).toMatchObject({ branch: "Staging", status: "pending_confirmation", recipientUserId: "u11" });
+    expect(steps).toEqual([{ kind: "send_draft", shipmentId: s.id, weightMismatch: null }]);
+    expect((await db().select().from(tickets))[0].gitlabStatus).toBe("Deployed Staging");
+  });
+
+  it("Done uses the Branch labels, and asks for one when there is none", async () => {
+    await statusChanged("In progress", "Done", ["Branch: Main"]);
+    expect((await allShipments()).map((s) => [s.branch, s.status])).toEqual([["Main", "pending_confirmation"]]);
+
+    await resetDb();
+    await linkDev();
+    await statusChanged("In progress", "Done");
+    expect((await allShipments())[0]).toMatchObject({ branch: null, status: "needs_branch" });
+  });
+
+  it("Deployed Staging → Deployed Main adds a Main shipment (branch promotion)", async () => {
+    await statusChanged("In progress", "Deployed Staging");
+    await statusChanged("Deployed Staging", "Deployed Main");
+    expect((await allShipments()).map((s) => s.branch)).toEqual(["Staging", "Main"]);
+  });
+
+  it("ignores statuses that aren't triggers", async () => {
+    const steps = await statusChanged("In progress", "Development Done");
+    expect(steps[0].kind).toBe("noop");
+    expect(await allShipments()).toHaveLength(0);
+  });
+
+  it("a status trigger on an issue already Done by label doesn't ship twice", async () => {
+    await labelsChanged(["Branch: Main"], ["Branch: Main", DONE]);
+    const steps = await statusChanged("In progress", "Done", ["Branch: Main", DONE]);
+    expect(steps[0].kind).toBe("noop");
+    expect(await allShipments()).toHaveLength(1);
+  });
+
+  it("moving back to Deployed Main after leaving it re-ships the published row", async () => {
+    await statusChanged("In progress", "Deployed Main");
+    const [s] = await allShipments();
+    await db().update(shipments).set({ status: "published", publishedVia: "confirmed", publishedAt: new Date() }).where(eq(shipments.id, s.id));
+
+    await statusChanged("Deployed Main", "In progress");
+    const steps = await statusChanged("In progress", "Deployed Main");
+    expect(steps).toEqual([{ kind: "send_draft", shipmentId: s.id, weightMismatch: null }]);
+    expect(await allShipments()).toHaveLength(1);
   });
 });
 

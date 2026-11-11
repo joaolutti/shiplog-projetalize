@@ -92,6 +92,8 @@ export const tickets = pgTable(
     requesterSource: requesterSource("requester_source").notNull().default("none"),
     hubspotUrls: jsonb("hubspot_urls").$type<string[]>().notNull().default([]),
     gitlabState: text("gitlab_state").notNull(), // opened | closed
+    /** Work item Status name from the last webhook, e.g. "Deployed Main" (not in the REST API). */
+    gitlabStatus: text("gitlab_status"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()

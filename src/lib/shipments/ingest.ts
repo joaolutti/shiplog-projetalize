@@ -2,11 +2,12 @@
  * Turns a stored GitLab event into ticket/shipment state (SCOPE.md §4 step 2,
  * docs/ARCHITECTURE.md §4).
  *
- * Issue Hook:
- *   - Done label added   → upsert ticket, one shipment per Branch label (or one needs_branch
+ * Issue Hook (trigger = Done label or a trigger Status, see gitlab/trigger.ts):
+ *   - became triggered   → upsert ticket, one shipment per branch (or one needs_branch
  *                          shipment when there is none); a published one re-ships (D7)
- *   - Branch label added → (ticket already Done) new shipment for that branch, or answers
- *                          the branch gate of a needs_branch shipment
+ *   - new branch         → (already triggered) new shipment for that branch, or answers
+ *                          the branch gate of a needs_branch shipment. A Branch label or a
+ *                          move between "Deployed <branch>" statuses
  *   - anything else      → refresh the cached ticket if we have it; reopen is noted on the
  *                          ticket's shipments
  * Merge Request Hook:
@@ -27,8 +28,9 @@ import {
   type MergeRequestStats,
   type RelatedMergeRequest,
 } from "@/lib/gitlab/client";
-import { branchesAdded, doneLabelAdded, labelConfig, parseLabels } from "@/lib/gitlab/labels";
+import { parseLabels } from "@/lib/gitlab/labels";
 import { extractHubspotUrls, parseDeliveryNotes, parseRequester } from "@/lib/gitlab/templates";
+import { shipChange, shipState, triggerConfig } from "@/lib/gitlab/trigger";
 import {
   findBranchless,
   noteOnTicketShipments,
@@ -50,6 +52,8 @@ const SYSTEM: Actor = { kind: "system" };
 // ── Payloads (only the fields Shiplog reads) ─────────────────────────
 
 const label = z.object({ title: z.string() });
+/** Work item Status. Not in the REST API, so the webhook is the only source. */
+const status = z.object({ name: z.string() }).nullish();
 
 const issueHook = z.object({
   user: z.object({ id: z.number() }).nullish(),
@@ -59,10 +63,14 @@ const issueHook = z.object({
     iid: z.number(),
     project_id: z.number(),
     action: z.string().nullish(),
+    status,
   }),
   labels: z.array(label).default([]),
   changes: z
-    .object({ labels: z.object({ previous: z.array(label), current: z.array(label) }).optional() })
+    .object({
+      labels: z.object({ previous: z.array(label), current: z.array(label) }).optional(),
+      status: z.object({ previous: status, current: status }).optional(),
+    })
     .default({}),
 });
 
@@ -104,10 +112,12 @@ async function ingestIssueHook(p: IssueHook): Promise<NextStep[]> {
   const current = titles(p.changes.labels?.current ?? p.labels);
   const previous = p.changes.labels ? titles(p.changes.labels.previous) : current;
 
-  const config = labelConfig();
-  const done = parseLabels(current, config).done;
-  const doneAdded = doneLabelAdded(previous, current, config);
-  const newBranches = done && !doneAdded ? branchesAdded(previous, current, config) : [];
+  const currentStatus = p.object_attributes.status?.name ?? null;
+  const previousStatus = p.changes.status ? (p.changes.status.previous?.name ?? null) : currentStatus;
+
+  const config = triggerConfig();
+  const now = shipState(current, currentStatus, config);
+  const { started, newBranches } = shipChange(shipState(previous, previousStatus, config), now);
   const { id: issueId, project_id: projectId, iid } = p.object_attributes;
 
   const [known] = await db()
@@ -115,11 +125,11 @@ async function ingestIssueHook(p: IssueHook): Promise<NextStep[]> {
     .from(tickets)
     .where(eq(tickets.gitlabIssueId, issueId));
 
-  if (!doneAdded && newBranches.length === 0) {
-    if (!known) return [{ kind: "noop", reason: `issue ${issueId}: no Done or Branch label added` }];
+  if (!started && newBranches.length === 0) {
+    if (!known) return [{ kind: "noop", reason: `issue ${issueId}: not triggered and no new branch` }];
     const issue = await getIssue(projectId, iid);
     await db().transaction(async (tx) => {
-      await upsertTicket(tx, issue, p.project.path_with_namespace);
+      await upsertTicket(tx, issue, p.project.path_with_namespace, currentStatus);
       if (p.object_attributes.action === "reopen") {
         await noteOnTicketShipments(tx, known.id, timelineEntry("issue_reopened"));
       }
@@ -137,11 +147,10 @@ async function ingestIssueHook(p: IssueHook): Promise<NextStep[]> {
     labelAppliedByGitlabId: p.user?.id ?? null,
   });
 
-  const branches = parseLabels(current, config).branches;
-  const targets: Array<string | null> = doneAdded ? (branches.length ? branches : [null]) : newBranches;
+  const targets: Array<string | null> = started ? (now.branches.length ? now.branches : [null]) : newBranches;
 
   return db().transaction(async (tx) => {
-    const ticket = await upsertTicket(tx, issue, p.project.path_with_namespace);
+    const ticket = await upsertTicket(tx, issue, p.project.path_with_namespace, currentStatus);
     // Serializes concurrent events for the same ticket.
     await tx.select({ id: tickets.id }).from(tickets).where(eq(tickets.id, ticket.id)).for("update");
 
@@ -151,7 +160,7 @@ async function ingestIssueHook(p: IssueHook): Promise<NextStep[]> {
         await shipToBranch(tx, {
           ticket,
           branch,
-          doneAdded,
+          started,
           recipient,
           mrs,
           stats,
@@ -165,7 +174,12 @@ async function ingestIssueHook(p: IssueHook): Promise<NextStep[]> {
 
 type TicketRow = typeof tickets.$inferSelect;
 
-async function upsertTicket(tx: Tx, issue: GitlabIssue, projectPath: string): Promise<TicketRow> {
+async function upsertTicket(
+  tx: Tx,
+  issue: GitlabIssue,
+  projectPath: string,
+  status: string | null,
+): Promise<TicketRow> {
   const requester = parseRequester(issue.description);
   const values = {
     gitlabIssueId: issue.id,
@@ -182,6 +196,7 @@ async function upsertTicket(tx: Tx, issue: GitlabIssue, projectPath: string): Pr
     requesterRaw: requester ? (requester.kind === "handle" ? `@${requester.value}` : requester.value) : null,
     hubspotUrls: extractHubspotUrls(issue.description),
     gitlabState: issue.state,
+    gitlabStatus: status,
   };
   const [row] = await tx
     .insert(tickets)
@@ -218,8 +233,8 @@ async function shipToBranch(
   args: {
     ticket: TicketRow;
     branch: string | null;
-    /** Only a newly added Done re-ships; re-adding a Branch label never does. */
-    doneAdded: boolean;
+    /** Only becoming triggered re-ships; a re-added Branch label never does. */
+    started: boolean;
     recipient: Recipient | null;
     mrs: RelatedMergeRequest[];
     stats: Map<number, MergeRequestStats>;
@@ -242,7 +257,7 @@ async function shipToBranch(
 
   if (existing) {
     await snapshotMergeRequests(tx, existing.id, args.mrs, args.stats);
-    if (!args.doneAdded) return { kind: "noop", reason: `shipment ${existing.id} already exists for ${branch}` };
+    if (!args.started) return { kind: "noop", reason: `shipment ${existing.id} already exists for ${branch}` };
     return reship(tx, {
       actor: SYSTEM,
       shipmentId: existing.id,

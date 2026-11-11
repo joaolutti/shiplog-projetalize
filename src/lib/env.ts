@@ -27,6 +27,10 @@ const schema = z.object({
   LABEL_DONE: z.string().default("Development: Done"),
   LABEL_BRANCH_PREFIX: z.string().default("Branch: "),
   LABEL_WEIGHT_PREFIX: z.string().default("Weight: "),
+  /** Work item statuses that ship an issue, comma-separated (D44). */
+  STATUS_TRIGGERS: z.string().default("Done,Deployed Main,Deployed Staging"),
+  /** A trigger status starting with this names the branch: "Deployed Main" → Main. */
+  STATUS_DEPLOYED_PREFIX: z.string().default("Deployed "),
 
   REMINDER_AFTER_HOURS: z.coerce.number().positive().default(4),
   AUTO_PUBLISH_AFTER_HOURS: z.coerce.number().positive().default(24),
