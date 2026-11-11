@@ -100,6 +100,10 @@ async function apply(
       ...changes,
       status: result.status,
       ...(result.publishedVia ? { publishedVia: result.publishedVia, publishedAt: new Date() } : {}),
+      // A new draft cycle: the reminder and auto-publish jobs are keyed by it.
+      ...(result.status === "pending_confirmation" && shipment.status !== "pending_confirmation"
+        ? { pendingSince: new Date(), reminderSentAt: null }
+        : {}),
       timeline: [
         ...shipment.timeline,
         timelineEntry(event, { from: shipment.status, to: result.status, ...data }),

@@ -16,6 +16,11 @@ const schema = z.object({
   SLACK_BOT_TOKEN: z.string().startsWith("xoxb-"),
   SLACK_SIGNING_SECRET: z.string().min(1),
   SLACK_FEED_CHANNEL_ID: z.string().min(1),
+  /**
+   * Development safety: when set (comma-separated Slack user IDs), DMs to anyone else are
+   * redirected to the first ID, marked with who they were for. Unset in production.
+   */
+  SLACK_DM_ALLOWLIST: z.string().optional(),
 
   GITLAB_BASE_URL: z.url().default("https://gitlab.com"),
   GITLAB_GROUP_PATH: z.string().min(1),

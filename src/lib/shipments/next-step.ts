@@ -1,4 +1,4 @@
-/** What should happen after ingest or a command (M1 logs these; M3 turns them into Slack jobs). */
+/** What should happen after ingest or a command. effects.ts turns these into jobs after commit. */
 import type { ShipmentStatus } from "./state";
 
 export type NextStep =
@@ -6,6 +6,8 @@ export type NextStep =
   | { kind: "nudge_missing_branch"; shipmentId: number }
   | { kind: "nudge_open_mrs"; shipmentId: number; openMrIds: number[] }
   | { kind: "send_draft"; shipmentId: number; weightMismatch: WeightMismatch | null }
+  | { kind: "held"; shipmentId: number }
+  | { kind: "published"; shipmentId: number }
   | { kind: "noop"; reason: string };
 
 /** Native weight field vs `Weight: X` label. The native field wins; the dev DM says so (D21). */
@@ -33,8 +35,8 @@ export function nextStepFor(
     case "pending_confirmation":
       return { kind: "send_draft", shipmentId, weightMismatch: extra.weightMismatch };
     case "held":
-      return { kind: "noop", reason: `shipment ${shipmentId} held until its MRs merge` };
+      return { kind: "held", shipmentId };
     case "published":
-      return { kind: "noop", reason: `shipment ${shipmentId} published` };
+      return { kind: "published", shipmentId };
   }
 }

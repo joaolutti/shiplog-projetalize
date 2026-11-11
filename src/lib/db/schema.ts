@@ -128,7 +128,13 @@ export const shipments = pgTable(
     dmChannelId: text("dm_channel_id"),
     dmMessageTs: text("dm_message_ts"),
     feedMessageTs: text("feed_message_ts"),
+    /** Start of the current draft cycle; the reminder and auto-publish jobs carry it. */
+    pendingSince: timestamp("pending_since", { withTimezone: true }),
     reminderSentAt: timestamp("reminder_sent_at", { withTimezone: true }),
+    /** Leads were DMed about this unclaimed shipment (once per shipment). */
+    leadsNotifiedAt: timestamp("leads_notified_at", { withTimezone: true }),
+    requesterDmChannelId: text("requester_dm_channel_id"),
+    requesterDmTs: text("requester_dm_ts"),
     /** "Pedir nova verificação" is allowed at most once per hour per shipment (D41). */
     lastReverifyRequestedAt: timestamp("last_reverify_requested_at", { withTimezone: true }),
     /** Every transition, re-ship and verification change, in order. */

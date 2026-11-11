@@ -304,6 +304,7 @@ async function createShipment(
       recipientGitlabId: args.recipient?.gitlabId ?? null,
       notesDraft: args.notesDraft,
       timeline: [timelineEntry("created", { status, branch: args.branch })],
+      pendingSince: status === "pending_confirmation" ? new Date() : null,
     })
     .returning();
   await snapshotMergeRequests(tx, shipment.id, args.mrs, args.stats);
