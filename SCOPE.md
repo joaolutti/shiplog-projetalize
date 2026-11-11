@@ -1,6 +1,7 @@
 # Shiplog — Project Scope
 
-> Status: **M1 (Ingest) done**, verified end to end against a local fake GitLab. Next: M2 (Identity).
+> Status: **M1 (Ingest) and M2 (Identity) done**, verified against the real GitLab project and Slack workspace
+> through the dev tunnel. Next: M3 (Slack DM flow). Hosting stays local until v1.
 > Last updated: 2026-11-10. System design: [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
 > Decisions made after the handoff are in §13.
 
@@ -295,13 +296,19 @@ The code is provider-agnostic: the AI SDK with an OpenAI-compatible base URL, co
 |---|---|---|
 | M0 | Scaffold + scope | ✅ This repo |
 | M1 | **Ingest**: webhook receiver, event store, label parsing, ticket/shipment upsert, related MRs, nudge decisions | Applying `Development: Done` on a test issue creates the right shipment (logged, no Slack yet). ✅ Locally with `scripts/fake-gitlab.ts`; a run against a real test project waits on a GitLab token + webhook |
-| M2 | **Identity**: Slack sign-in, GitLab connect, roles, unclaimed queue | All 9 dev-team accounts linked |
+| M2 | **Identity**: Slack sign-in, GitLab connect, roles, unclaimed queue | ✅ The owner's account signed in with Slack and linked to GitLab. The rest of the team links when the app goes live (v1) |
 | M3 | **Slack DM flow**: draft DM, edit modal, hold-until-merged, reminder, auto-publish, channel card, requester DM | A full ship happens without anyone typing a message |
 | M4 | **Web app**: feed + filters (date, branch, label, dev, requester, verification), ticket page, thread, verify/report, DM notifications | The team stops using the channel for discussion |
 | M5 (v1.5) | **Weight review**: data policy, redaction, audit log, eval harness → model choice, weight + notes in DM | Eval run reviewed by the leads, model chosen, rollout |
 | v2 | Mirror Slack thread replies into the web app, daily digest, "Issue reported" → reopen in GitLab, team-level dashboards, HubSpot links | — |
 
 ## 12. Open items
+
+- [ ] **Hosting:** the app runs locally behind the `shiplog-dev.lutti.dev` tunnel until v1; deploy to Render then,
+      and have the team sign in and connect GitLab at that point.
+- [ ] **Visual branding:** a mascot identity for the Slack bot and web app: a little helper character dressed as a
+      pirate (we're *shipping* things). Covers the bot avatar, app icon and empty states. Before M3's Slack
+      messages are finalized and M4's design system.
 
 - [ ] Confirm the Fibonacci scale's top value (13? 21?) and update the rubric (`config/weight-rubric.md`).
 - [ ] Leads choose the calibration tickets (`config/calibration.yaml`).
