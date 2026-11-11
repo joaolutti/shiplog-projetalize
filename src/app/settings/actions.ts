@@ -6,7 +6,7 @@ import { auth } from "@/lib/auth/auth";
 import { setRole } from "@/lib/auth/roles";
 import { actorOf, requireViewer, type Role } from "@/lib/auth/viewer";
 
-/** "Conectar GitLab" (D15): links the GitLab account to the signed-in user. */
+// "Conectar GitLab" (D15): links the GitLab account to the signed-in user.
 export async function connectGitlab() {
   await requireViewer();
   const { url } = await auth().api.linkSocialAccount({
@@ -18,7 +18,7 @@ export async function connectGitlab() {
 
 const ROLES: Role[] = ["member", "dev", "lead"];
 
-/** Leads only (enforced in setRole). */
+// Leads only (enforced in setRole).
 export async function changeRole(formData: FormData) {
   const viewer = await requireViewer();
   const userId = String(formData.get("userId") ?? "");

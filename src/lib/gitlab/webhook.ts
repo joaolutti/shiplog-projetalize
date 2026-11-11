@@ -19,7 +19,7 @@ import { JOBS } from "@/worker/jobs";
 
 export type GitlabEventType = "Issue Hook" | "Merge Request Hook";
 
-/** Event types Shiplog stores. Confidential issues arrive as their own hook type. */
+// Event types Shiplog stores. Confidential issues arrive as their own hook type.
 const HANDLED: Record<string, GitlabEventType> = {
   "Issue Hook": "Issue Hook",
   "Confidential Issue Hook": "Issue Hook",

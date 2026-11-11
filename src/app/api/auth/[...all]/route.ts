@@ -1,4 +1,4 @@
-/** Better Auth handler: OAuth redirects and callbacks for Slack sign-in and GitLab linking. */
+// Better Auth handler: OAuth redirects and callbacks for Slack sign-in and GitLab linking.
 import { toNextJsHandler } from "better-auth/next-js";
 import { auth } from "@/lib/auth/auth";
 

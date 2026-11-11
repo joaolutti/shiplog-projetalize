@@ -4,7 +4,7 @@ import { actorOf, requireViewer } from "@/lib/auth/viewer";
 import { assignRecipient, leadPublish } from "@/lib/shipments/commands";
 import { execute } from "@/lib/shipments/effects";
 
-/** Leads only (enforced in the commands). The follow-up DMs are queued by execute. */
+// Leads only (enforced in the commands). The follow-up DMs are queued by execute.
 export async function assignAction(formData: FormData) {
   const viewer = await requireViewer();
   const shipmentId = Number(formData.get("shipmentId"));

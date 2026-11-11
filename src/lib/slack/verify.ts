@@ -11,7 +11,7 @@ export function verifySlackSignature(args: {
   rawBody: string;
   timestamp: string | null;
   signature: string | null;
-  /** Injectable for tests. */
+  // Injectable for tests.
   secret?: string;
   now?: number;
 }): boolean {

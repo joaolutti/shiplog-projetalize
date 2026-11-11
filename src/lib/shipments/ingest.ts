@@ -54,7 +54,7 @@ const SYSTEM: Actor = { kind: "system" };
 // ── Payloads (only the fields Shiplog reads) ─────────────────────────
 
 const label = z.object({ title: z.string() });
-/** Work item Status. Not in the REST API, so the webhook is the only source. */
+// Work item Status. Not in the REST API, so the webhook is the only source.
 const status = z.object({ name: z.string() }).nullish();
 
 const issueHook = z.object({
@@ -209,14 +209,14 @@ async function upsertTicket(
   return row;
 }
 
-/** v1 notes: each MR's "## Notas de entrega", falling back to its title; the issue title if no MRs. */
+// v1 notes: each MR's "## Notas de entrega", falling back to its title; the issue title if no MRs.
 function notesDraft(issue: GitlabIssue, mrs: RelatedMergeRequest[]): string {
   const relevant = mrs.filter((mr) => mr.state !== "closed");
   if (relevant.length === 0) return issue.title;
   return relevant.map((mr) => parseDeliveryNotes(mr.description) ?? mr.title).join("\n\n");
 }
 
-/** Stats per MR id. A failure (e.g. a project the token can't read) leaves the stats empty. */
+// Stats per MR id. A failure (e.g. a project the token can't read) leaves the stats empty.
 async function statsFor(mrs: RelatedMergeRequest[]): Promise<Map<number, MergeRequestStats>> {
   const entries = await Promise.all(
     mrs.map(async (mr) => {
@@ -236,7 +236,7 @@ async function shipToBranch(
   args: {
     ticket: TicketRow;
     branch: string | null;
-    /** Only becoming triggered re-ships; a re-added Branch label never does. */
+    // Only becoming triggered re-ships; a re-added Branch label never does.
     started: boolean;
     recipient: Recipient | null;
     mrs: RelatedMergeRequest[];
@@ -318,12 +318,12 @@ async function createShipment(
   });
 }
 
-/** MRs that still block the hold gate. Closed-without-merge MRs don't (ARCHITECTURE §3). */
+// MRs that still block the hold gate. Closed-without-merge MRs don't (ARCHITECTURE §3).
 function openMergeRequests(mrs: RelatedMergeRequest[]): RelatedMergeRequest[] {
   return mrs.filter((mr) => mr.state === "opened" || mr.state === "locked");
 }
 
-/** Upserts the per-shipment MR rows: stats only, never diffs. */
+// Upserts the per-shipment MR rows: stats only, never diffs.
 async function snapshotMergeRequests(
   tx: Tx,
   shipmentId: number,

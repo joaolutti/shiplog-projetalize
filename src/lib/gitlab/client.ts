@@ -8,7 +8,7 @@ import { notImplemented } from "@/lib/not-implemented";
 
 type Query = Record<string, string | number | boolean | undefined>;
 
-/** Non-2xx response from the GitLab API. */
+// Non-2xx response from the GitLab API.
 export class GitlabApiError extends Error {
   constructor(
     readonly status: number,
@@ -19,7 +19,7 @@ export class GitlabApiError extends Error {
   }
 }
 
-/** The only way this module talks to GitLab: a single GET with the API token. */
+// The only way this module talks to GitLab: a single GET with the API token.
 async function gitlabGet(path: string, query: Query = {}): Promise<Response> {
   const url = new URL(`${env("GITLAB_BASE_URL").replace(/\/+$/, "")}/api/v4${path}`);
   for (const [key, value] of Object.entries(query)) {
@@ -33,12 +33,12 @@ async function gitlabGet(path: string, query: Query = {}): Promise<Response> {
   return res;
 }
 
-/** GET a single resource as JSON. */
+// GET a single resource as JSON.
 async function getJson<T>(path: string, query?: Query): Promise<T> {
   return (await (await gitlabGet(path, query)).json()) as T;
 }
 
-/** GET every page of a list endpoint, following `x-next-page`. */
+// GET every page of a list endpoint, following `x-next-page`.
 async function getAllPages<T>(path: string, query: Query = {}): Promise<T[]> {
   const items: T[] = [];
   let page: string | null = "1";
@@ -78,7 +78,7 @@ interface RawIssue {
   state: "opened" | "closed";
 }
 
-/** GET /projects/:id/issues/:iid: always refetched, never trusting the webhook payload alone. */
+// GET /projects/:id/issues/:iid: always refetched, never trusting the webhook payload alone.
 export async function getIssue(projectId: number, iid: number): Promise<GitlabIssue> {
   const raw = await getJson<RawIssue>(`/projects/${enc(projectId)}/issues/${enc(iid)}`);
   return {
@@ -123,13 +123,13 @@ interface RawMergeRequest {
   references: { full: string };
 }
 
-/** "group/sub/proj!45" → "group/sub/proj". */
+// "group/sub/proj!45" → "group/sub/proj".
 function projectPathFromReference(full: string): string {
   const bang = full.lastIndexOf("!");
   return bang === -1 ? full : full.slice(0, bang);
 }
 
-/** GET /projects/:id/issues/:iid/related_merge_requests: cross-project. */
+// GET /projects/:id/issues/:iid/related_merge_requests: cross-project.
 export async function getRelatedMergeRequests(
   projectId: number,
   issueIid: number,
@@ -208,7 +208,7 @@ export async function getMergeRequestStats(
   return { filesChanged: diffs.length, additions, deletions, firstCommitAt };
 }
 
-/** Raw diff hunks, held in memory only. Callers must apply data policy + redaction. */
+// Raw diff hunks, held in memory only. Callers must apply data policy + redaction.
 export async function getMergeRequestDiffs(
   _projectId: number,
   _mrIid: number,

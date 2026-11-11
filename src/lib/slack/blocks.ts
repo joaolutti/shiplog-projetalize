@@ -23,13 +23,13 @@ export const ACTIONS = {
   verify: "shipment.verify",
   reportIssue: "shipment.report_issue",
   requestReverification: "shipment.request_reverification",
-  /** Link buttons: Slack still sends a block_action, which is acknowledged and ignored. */
+  // Link buttons: Slack still sends a block_action, which is acknowledged and ignored.
   openLink: "shipment.open_link",
 } as const;
 
 export type ActionId = (typeof ACTIONS)[keyof typeof ACTIONS];
 
-/** Modal submissions: callback_id, with the shipment ID in private_metadata. */
+// Modal submissions: callback_id, with the shipment ID in private_metadata.
 export const MODALS = {
   editNotes: "modal.edit_notes",
   addComment: "modal.add_comment",
@@ -38,11 +38,11 @@ export const MODALS = {
 
 export type ModalId = (typeof MODALS)[keyof typeof MODALS];
 
-/** Block ID prefixes of the pickers in the draft DM (select menus carry no value of their own). */
+// Block ID prefixes of the pickers in the draft DM (select menus carry no value of their own).
 export const REQUESTER_BLOCK = "requester:";
 export const MENTIONS_BLOCK = "mentions:";
 
-/** Field IDs inside the modals (block_id and action_id). */
+// Field IDs inside the modals (block_id and action_id).
 export const FIELDS = { text: "text" } as const;
 
 export interface ShipmentView {
@@ -51,7 +51,7 @@ export interface ShipmentView {
   branch: string | null;
   notes: string | null;
   publishedVia: "confirmed" | "auto" | "lead" | null;
-  /** Page on the web app. */
+  // Page on the web app.
   url: string;
   ticket: {
     iid: number;
@@ -66,23 +66,23 @@ export interface ShipmentView {
     | { kind: "resolved"; slackUserId: string }
     | { kind: "unresolved"; raw: string };
   mergeRequests: Array<{ ref: string; title: string; webUrl: string; state: string }>;
-  /** Slack users the dev chose to @mention on the channel card. */
+  // Slack users the dev chose to @mention on the channel card.
   mentions: string[];
-  /** GitLab user it was meant for, when unclaimed. */
+  // GitLab user it was meant for, when unclaimed.
   intendedGitlabId: number | null;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
-/** Escapes text for mrkdwn (&, <, >). */
+// Escapes text for mrkdwn (&, <, >).
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 const issueLink = (v: ShipmentView) => `<${v.ticket.webUrl}|#${v.ticket.iid} ${esc(v.ticket.title)}>`;
 
-/** Slack rejects a section over 3000 characters; this leaves room for a short heading. */
+// Slack rejects a section over 3000 characters; this leaves room for a short heading.
 const MAX_QUOTE = 2800;
 
-/** Quoted, escaped text, cut to MAX_QUOTE without splitting an escape like `&amp;`. */
+// Quoted, escaped text, cut to MAX_QUOTE without splitting an escape like `&amp;`.
 const quote = (text: string) => {
   const quoted = esc(text)
     .split("\n")
@@ -132,7 +132,7 @@ function detailsContext(v: ShipmentView): KnownBlock[] {
   return [context(parts.join(" · "))];
 }
 
-/** "cc @a @b" for the people the dev tagged, or null. */
+// "cc @a @b" for the people the dev tagged, or null.
 function mentionsText(v: ShipmentView): string | null {
   return v.mentions.length ? `cc ${v.mentions.map((id) => `<@${id}>`).join(" ")}` : null;
 }
@@ -143,7 +143,7 @@ function notesBlock(v: ShipmentView): KnownBlock {
 
 // ── Recipient DM: one message per shipment, updated in place as the status changes ──
 
-/** The recipient's DM for the shipment's current status. */
+// The recipient's DM for the shipment's current status.
 export function recipientDm(v: ShipmentView, opts: { branchChoices: string[]; autoPublishHours: number }): SlackMessage {
   switch (v.status) {
     case "needs_branch":
@@ -273,7 +273,7 @@ function publishedDm(v: ShipmentView): SlackMessage {
   };
 }
 
-/** Thread reply under the draft DM, once, after REMINDER_AFTER_HOURS. */
+// Thread reply under the draft DM, once, after REMINDER_AFTER_HOURS.
 export function reminderReply(v: ShipmentView, hoursLeft: number): SlackMessage {
   return {
     text: `Lembrete: #${v.ticket.iid} ainda aguarda confirmação`,
@@ -303,7 +303,7 @@ export function leadsUnclaimedDm(v: ShipmentView, unclaimedUrl: string): SlackMe
 
 // ── Published: channel card and requester DM ─────────────────────────
 
-/** Read-only card in the existing channel (D9): today's format, plus "Abrir no Shiplog". */
+// Read-only card in the existing channel (D9): today's format, plus "Abrir no Shiplog".
 export function feedCard(v: ShipmentView): SlackMessage {
   const requester = v.requester.kind === "resolved" ? ` (<@${v.requester.slackUserId}>)` : "";
   const unconfirmed = v.publishedVia === "auto" ? [context(":warning: Notas não confirmadas pelo dev.")] : [];
@@ -319,7 +319,7 @@ export function feedCard(v: ShipmentView): SlackMessage {
   };
 }
 
-/** DM to the requester (D11). After they answer, it's updated to show what they chose. */
+// DM to the requester (D11). After they answer, it's updated to show what they chose.
 export function requesterDm(v: ShipmentView, answered: "verified" | "issue_reported" | null): SlackMessage {
   const blocks: KnownBlock[] = [
     section(`:tada: *O que você pediu foi entregue em ${esc(v.branch ?? "?")}*\n${issueLink(v)}`),
@@ -348,7 +348,7 @@ export function requesterDm(v: ShipmentView, answered: "verified" | "issue_repor
   return { text: `Entregue em ${v.branch}: #${v.ticket.iid} ${v.ticket.title}`, blocks };
 }
 
-/** Thread reply under the recipient's DM when someone comments on the shipment. */
+// Thread reply under the recipient's DM when someone comments on the shipment.
 export function commentReply(authorSlackId: string | null, authorName: string, body: string): SlackMessage {
   const who = authorSlackId ? `<@${authorSlackId}>` : esc(authorName);
   return {
@@ -357,7 +357,7 @@ export function commentReply(authorSlackId: string | null, authorName: string, b
   };
 }
 
-/** DM to the dev when someone reports a problem. */
+// DM to the dev when someone reports a problem.
 export function issueReportedDm(v: ShipmentView, reporterSlackId: string | null, comment: string): SlackMessage {
   const who = reporterSlackId ? `<@${reporterSlackId}>` : "Alguém";
   return {

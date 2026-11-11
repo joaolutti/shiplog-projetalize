@@ -1,4 +1,4 @@
-/** GitLab client: payload mapping, pagination, diff-free stats, errors and the GET-only guard. */
+// GitLab client: payload mapping, pagination, diff-free stats, errors and the GET-only guard.
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -15,7 +15,7 @@ const BASE = "https://gitlab.example.com";
 const TOKEN = "glpat-test-token";
 
 type Route = { body: unknown; status?: number; nextPage?: string };
-/** Routes keyed by "<pathname>" or "<pathname>?page=N". */
+// Routes keyed by "<pathname>" or "<pathname>?page=N".
 let routes: Record<string, Route>;
 const fetchMock = vi.fn(async (input: string | URL | Request, _init?: RequestInit) => {
   const url = new URL(String(input));

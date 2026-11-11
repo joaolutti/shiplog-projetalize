@@ -79,7 +79,7 @@ export async function loadShipment(shipmentId: number): Promise<LoadedShipment |
   };
 }
 
-/** Slack user ID of a Shiplog user (from their Slack sign-in), or null. */
+// Slack user ID of a Shiplog user (from their Slack sign-in), or null.
 export async function slackIdOf(userId: string): Promise<string | null> {
   const [row] = await db()
     .select({ accountId: account.accountId })
@@ -88,7 +88,7 @@ export async function slackIdOf(userId: string): Promise<string | null> {
   return row?.accountId ?? null;
 }
 
-/** Slack user IDs of every lead who has signed in. */
+// Slack user IDs of every lead who has signed in.
 export async function leadSlackIds(): Promise<string[]> {
   const rows = await db()
     .select({ accountId: account.accountId })
@@ -98,7 +98,7 @@ export async function leadSlackIds(): Promise<string[]> {
   return rows.map((r) => r.accountId);
 }
 
-/** Shiplog users for these Slack IDs (only those who exist). */
+// Shiplog users for these Slack IDs (only those who exist).
 export async function usersBySlackId(slackIds: string[]): Promise<Map<string, { id: string; role: "member" | "dev" | "lead" }>> {
   if (slackIds.length === 0) return new Map();
   const rows = await db()

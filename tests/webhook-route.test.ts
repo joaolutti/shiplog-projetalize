@@ -1,4 +1,4 @@
-/** POST /api/webhooks/gitlab: verify, filter, store + enqueue (storage mocked here). */
+// POST /api/webhooks/gitlab: verify, filter, store + enqueue (storage mocked here).
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import issueDone from "./fixtures/webhooks/issue-done.json";
 

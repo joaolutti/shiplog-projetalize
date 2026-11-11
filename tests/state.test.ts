@@ -1,4 +1,4 @@
-/** Shipment state machine (docs/ARCHITECTURE.md §3, D40): the full transition table. */
+// Shipment state machine (docs/ARCHITECTURE.md §3, D40): the full transition table.
 import { describe, expect, it } from "vitest";
 import {
   gateStatus,
@@ -30,7 +30,7 @@ const STATUSES: ShipmentStatus[] = [
   "published",
 ];
 
-/** Expected result with all gates answerable (`ready`); "x" = invalid transition. */
+// Expected result with all gates answerable (`ready`); "x" = invalid transition.
 const TABLE: Record<ShipmentEvent, Record<ShipmentStatus, ShipmentStatus | "x">> = {
   assign_recipient: {
     unclaimed: "pending_confirmation",

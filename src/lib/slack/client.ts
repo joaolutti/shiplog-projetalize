@@ -16,7 +16,7 @@ export function slack(): WebClient {
 }
 
 export interface SlackMessage {
-  /** Notification and accessibility fallback. */
+  // Notification and accessibility fallback.
   text: string;
   blocks: KnownBlock[];
 }
@@ -26,7 +26,7 @@ export interface MessageRef {
   ts: string;
 }
 
-/** Where a DM for `slackUserId` actually goes, given the development allowlist. */
+// Where a DM for `slackUserId` actually goes, given the development allowlist.
 export function dmTarget(
   slackUserId: string,
   allowlist: string | undefined,
@@ -39,7 +39,7 @@ export function dmTarget(
   return { userId: allowed[0], redirectedFrom: slackUserId };
 }
 
-/** Opens (or reuses) the DM with a user and posts the message. */
+// Opens (or reuses) the DM with a user and posts the message.
 export async function sendDm(slackUserId: string, message: SlackMessage): Promise<MessageRef> {
   const target = dmTarget(slackUserId, env("SLACK_DM_ALLOWLIST"));
   const blocks: KnownBlock[] = target.redirectedFrom
@@ -68,7 +68,7 @@ export async function update(ref: MessageRef, message: SlackMessage): Promise<vo
   await slack().chat.update({ channel: ref.channel, ts: ref.ts, text: message.text, blocks: message.blocks });
 }
 
-/** Posts in the thread of an existing message (e.g. the reminder under the draft DM). */
+// Posts in the thread of an existing message (e.g. the reminder under the draft DM).
 export async function reply(ref: MessageRef, message: SlackMessage): Promise<void> {
   await slack().chat.postMessage({ channel: ref.channel, thread_ts: ref.ts, text: message.text, blocks: message.blocks });
 }

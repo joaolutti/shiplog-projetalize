@@ -1,4 +1,4 @@
-/** Recipient resolution (D4 order, first linked candidate). */
+// Recipient resolution (D4 order, first linked candidate).
 import { beforeEach, describe, expect, it } from "vitest";
 import { db } from "@/lib/db/client";
 import { account, user } from "@/lib/db/schema";

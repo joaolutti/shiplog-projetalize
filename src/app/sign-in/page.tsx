@@ -1,8 +1,8 @@
-/** Sign in with Slack: the only way in (D14). */
+// Sign in with Slack: the only way in (D14).
 import { Suspense } from "react";
 import { signInWithSlack } from "./actions";
 
-/** Better Auth's error codes (and ours from lib/auth/identity.ts) in pt-BR. */
+// Better Auth's error codes (and ours from lib/auth/identity.ts) in pt-BR.
 const ERRORS: Record<string, string> = {
   wrong_workspace: "Essa conta não é do Slack da empresa. Entre com a sua conta do workspace da empresa.",
   gitlab_link_only: "O GitLab não é usado para entrar. Entre com o Slack e conecte o GitLab em Configurações.",

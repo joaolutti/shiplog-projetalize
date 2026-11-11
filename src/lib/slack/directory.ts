@@ -9,7 +9,7 @@ import { slack } from "./client";
 
 export interface DirectoryUser {
   id: string;
-  /** Username, e.g. "ana.ribeiro". */
+  // Username, e.g. "ana.ribeiro".
   name: string;
   realName: string;
   displayName: string;
@@ -43,7 +43,7 @@ export function matchRequester(ref: RequesterRef, users: DirectoryUser[]): Reque
 const TTL_MS = 60 * 60 * 1000;
 let cached: { at: number; users: DirectoryUser[] } | undefined;
 
-/** Active, human members of the workspace. */
+// Active, human members of the workspace.
 export async function directory(): Promise<DirectoryUser[]> {
   if (cached && Date.now() - cached.at < TTL_MS) return cached.users;
   const users: DirectoryUser[] = [];

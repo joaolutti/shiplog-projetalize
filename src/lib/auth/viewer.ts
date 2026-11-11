@@ -20,7 +20,7 @@ export interface Viewer {
   email: string;
   image: string | null;
   role: Role;
-  /** Linked GitLab user ID, or null before "Conectar GitLab". */
+  // Linked GitLab user ID, or null before "Conectar GitLab".
   gitlabId: number | null;
 }
 
@@ -48,7 +48,7 @@ export async function requireViewer(): Promise<Viewer> {
   return viewer;
 }
 
-/** Sends viewers without one of `roles` back to the feed. */
+// Sends viewers without one of `roles` back to the feed.
 export async function requireRole(...roles: Role[]): Promise<Viewer> {
   const viewer = await requireViewer();
   if (!roles.includes(viewer.role)) redirect("/");

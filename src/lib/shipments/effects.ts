@@ -15,7 +15,7 @@ import type { NextStep } from "./next-step";
 
 const HOUR = 60 * 60 * 1000;
 
-/** Runs a command and queues its follow-ups in one transaction. */
+// Runs a command and queues its follow-ups in one transaction.
 export function execute(command: (tx: Tx) => Promise<NextStep>): Promise<NextStep> {
   return db().transaction(async (tx) => {
     const step = await command(tx);
@@ -60,7 +60,7 @@ export async function dispatch(tx: Tx, steps: NextStep[]): Promise<void> {
   }
 }
 
-/** Reminder and auto-publish for the shipment's current draft cycle (D8). */
+// Reminder and auto-publish for the shipment's current draft cycle (D8).
 async function scheduleTimers(tx: Tx, shipmentId: number): Promise<void> {
   const [row] = await tx.select({ pendingSince: shipments.pendingSince }).from(shipments).where(eq(shipments.id, shipmentId));
   if (!row?.pendingSince) return;

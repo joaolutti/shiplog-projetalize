@@ -1,4 +1,4 @@
-/** Ship trigger: Done label or a trigger Status (D44). */
+// Ship trigger: Done label or a trigger Status (D44).
 import { describe, expect, it } from "vitest";
 import { shipChange, shipState, type TriggerConfig } from "@/lib/gitlab/trigger";
 

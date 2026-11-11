@@ -1,4 +1,4 @@
-/** M2: leads' unclaimed queue, role changes and role-aware queries (database). */
+// M2: leads' unclaimed queue, role changes and role-aware queries (database).
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { setRole } from "@/lib/auth/roles";

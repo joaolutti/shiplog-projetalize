@@ -11,12 +11,12 @@ export interface UnclaimedShipment {
   id: number;
   branch: string | null;
   createdAt: Date;
-  /** GitLab user the shipment was meant for (assignee → MR author → label applier). */
+  // GitLab user the shipment was meant for (assignee → MR author → label applier).
   intendedGitlabId: number | null;
   ticket: { iid: number; title: string; webUrl: string; projectPath: string };
 }
 
-/** Leads only; empty for anyone else. Oldest first. */
+// Leads only; empty for anyone else. Oldest first.
 export async function listUnclaimed(viewer: Viewer): Promise<UnclaimedShipment[]> {
   if (viewer.role !== "lead") return [];
   const rows = await db()
@@ -48,7 +48,7 @@ export interface TeamMember {
   gitlabId: number | null;
 }
 
-/** Leads see everyone (to manage roles); others see nobody. Sorted by name. */
+// Leads see everyone (to manage roles); others see nobody. Sorted by name.
 export async function listTeam(viewer: Viewer): Promise<TeamMember[]> {
   if (viewer.role !== "lead") return [];
   const users = await db()
@@ -71,7 +71,7 @@ export async function listTeam(viewer: Viewer): Promise<TeamMember[]> {
   return users.map((u) => ({ ...u, gitlabId: gitlabByUser.get(u.id) ?? null }));
 }
 
-/** Who a lead can assign an unclaimed shipment to: devs and leads with GitLab linked. */
+// Who a lead can assign an unclaimed shipment to: devs and leads with GitLab linked.
 export async function listAssignable(viewer: Viewer): Promise<TeamMember[]> {
   return (await listTeam(viewer)).filter((m) => m.role !== "member" && m.gitlabId !== null);
 }

@@ -1,4 +1,4 @@
-/** storeAndEnqueue against a real database (skipped without TEST_DATABASE_URL). */
+// storeAndEnqueue against a real database (skipped without TEST_DATABASE_URL).
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/lib/db/client";

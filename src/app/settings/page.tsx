@@ -1,4 +1,4 @@
-/** Configurações (M2): account, "Conectar GitLab", roles for leads, and what Shiplog never does. */
+// Configurações (M2): account, "Conectar GitLab", roles for leads, and what Shiplog never does.
 import { Suspense } from "react";
 import { changeRole, connectGitlab } from "./actions";
 import { requireViewer, type Role, type Viewer } from "@/lib/auth/viewer";
@@ -116,7 +116,7 @@ async function Team({ viewer }: { viewer: Viewer }) {
   );
 }
 
-/** Static, so it's part of the prerendered shell. Mirrors the hard rules in AGENTS.md. */
+// Static, so it's part of the prerendered shell. Mirrors the hard rules in AGENTS.md.
 function NeverRules() {
   return (
     <Section title="O que o Shiplog nunca faz">

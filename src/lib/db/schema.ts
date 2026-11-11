@@ -24,7 +24,7 @@ export * from "./auth-schema";
 
 // ── Enums ────────────────────────────────────────────────────────────
 
-/** Gates run recipient → branch → open MRs → draft (D40). */
+// Gates run recipient → branch → open MRs → draft (D40).
 export const shipmentStatus = pgEnum("shipment_status", [
   "unclaimed", // no linked recipient; leads are DMed and answer the remaining gates
   "needs_branch", // Done applied without a Branch label; `branch` is NULL
@@ -34,7 +34,7 @@ export const shipmentStatus = pgEnum("shipment_status", [
   "published",
 ]);
 
-/** Where `tickets.requester_slack_id` came from (D16 revised). */
+// Where `tickets.requester_slack_id` came from (D16 revised).
 export const requesterSource = pgEnum("requester_source", ["template", "dev_picked", "none"]);
 
 export const publishedVia = pgEnum("published_via", ["confirmed", "auto", "lead"]);
@@ -57,7 +57,7 @@ export const devWeightResponse = pgEnum("dev_weight_response", [
 
 // ── GitLab event store ───────────────────────────────────────────────
 
-/** Raw webhook deliveries. Deduped on GitLab's X-Gitlab-Event-UUID header. */
+// Raw webhook deliveries. Deduped on GitLab's X-Gitlab-Event-UUID header.
 export const gitlabEvents = pgTable("gitlab_events", {
   id: serial("id").primaryKey(),
   eventUuid: text("event_uuid").notNull().unique(),
@@ -81,18 +81,18 @@ export const tickets = pgTable(
     title: text("title").notNull(),
     webUrl: text("web_url").notNull(),
     labels: jsonb("labels").$type<string[]>().notNull().default([]),
-    /** Native GitLab weight field (source of truth). */
+    // Native GitLab weight field (source of truth).
     nativeWeight: integer("native_weight"),
-    /** Parsed from the "Weight: X" label; mismatch with native is surfaced to the dev. */
+    // Parsed from the "Weight: X" label; mismatch with native is surfaced to the dev.
     labelWeight: integer("label_weight"),
     assigneeGitlabIds: jsonb("assignee_gitlab_ids").$type<number[]>().notNull().default([]),
-    /** `Solicitante:` value as typed in the issue; NULL for general updates. */
+    // `Solicitante:` value as typed in the issue; NULL for general updates.
     requesterRaw: text("requester_raw"),
     requesterSlackId: text("requester_slack_id"),
     requesterSource: requesterSource("requester_source").notNull().default("none"),
     hubspotUrls: jsonb("hubspot_urls").$type<string[]>().notNull().default([]),
     gitlabState: text("gitlab_state").notNull(), // opened | closed
-    /** Work item Status name from the last webhook, e.g. "Deployed Main" (not in the REST API). */
+    // Work item Status name from the last webhook, e.g. "Deployed Main" (not in the REST API).
     gitlabStatus: text("gitlab_status"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
@@ -116,7 +116,7 @@ export const shipments = pgTable(
       .references(() => tickets.id, { onDelete: "cascade" }),
     branch: text("branch"), // null while needs_branch
     status: shipmentStatus("status").notNull(),
-    /** Dev who receives the draft DM (assignee → MR author → label applier). NULL while unclaimed. */
+    // Dev who receives the draft DM (assignee → MR author → label applier). NULL while unclaimed.
     recipientUserId: text("recipient_user_id").references(() => user.id),
     recipientGitlabId: bigint("recipient_gitlab_id", { mode: "number" }),
     notesDraft: text("notes_draft"),
@@ -128,18 +128,18 @@ export const shipments = pgTable(
     dmChannelId: text("dm_channel_id"),
     dmMessageTs: text("dm_message_ts"),
     feedMessageTs: text("feed_message_ts"),
-    /** Start of the current draft cycle; the reminder and auto-publish jobs carry it. */
+    // Start of the current draft cycle; the reminder and auto-publish jobs carry it.
     pendingSince: timestamp("pending_since", { withTimezone: true }),
     reminderSentAt: timestamp("reminder_sent_at", { withTimezone: true }),
-    /** Leads were DMed about this unclaimed shipment (once per shipment). */
+    // Leads were DMed about this unclaimed shipment (once per shipment).
     leadsNotifiedAt: timestamp("leads_notified_at", { withTimezone: true }),
-    /** Slack users the dev chose to @mention on the channel card. */
+    // Slack users the dev chose to @mention on the channel card.
     mentionSlackIds: jsonb("mention_slack_ids").$type<string[]>().notNull().default([]),
     requesterDmChannelId: text("requester_dm_channel_id"),
     requesterDmTs: text("requester_dm_ts"),
-    /** "Pedir nova verificação" is allowed at most once per hour per shipment (D41). */
+    // "Pedir nova verificação" is allowed at most once per hour per shipment (D41).
     lastReverifyRequestedAt: timestamp("last_reverify_requested_at", { withTimezone: true }),
-    /** Every transition, re-ship and verification change, in order. */
+    // Every transition, re-ship and verification change, in order.
     timeline: jsonb("timeline").$type<TimelineEntry[]>().notNull().default([]),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
@@ -160,7 +160,7 @@ export const shipments = pgTable(
   ],
 );
 
-/** MRs related to the ticket at ship time (may span projects). Stats only — never diffs. */
+// MRs related to the ticket at ship time (may span projects). Stats only — never diffs.
 export const shipmentMergeRequests = pgTable(
   "shipment_merge_requests",
   {
@@ -198,7 +198,7 @@ export const verifications = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => user.id),
-    /** Can change (issue_reported ↔ verified); each change is written to the shipment timeline. */
+    // Can change (issue_reported ↔ verified); each change is written to the shipment timeline.
     kind: verificationKind("kind").notNull(),
     commentId: integer("comment_id").references(() => comments.id),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -210,7 +210,7 @@ export const verifications = pgTable(
   (t) => [uniqueIndex("verifications_shipment_user").on(t.shipmentId, t.userId)],
 );
 
-/** Thread is per ticket; a comment may reference the shipment it's about. */
+// Thread is per ticket; a comment may reference the shipment it's about.
 export const comments = pgTable(
   "comments",
   {
@@ -232,7 +232,7 @@ export const comments = pgTable(
 
 // ── Weight second opinion (v1.5) ─────────────────────────────────────
 
-/** Assigned / suggested / dev response are stored side by side and never overwritten. */
+// Assigned / suggested / dev response are stored side by side and never overwritten.
 export const weightReviews = pgTable("weight_reviews", {
   id: serial("id").primaryKey(),
   shipmentId: integer("shipment_id")
@@ -253,14 +253,14 @@ export const weightReviews = pgTable("weight_reviews", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-/** One row per model call: answers "what left the company for ticket X?". */
+// One row per model call: answers "what left the company for ticket X?".
 export const llmAuditLog = pgTable("llm_audit_log", {
   id: serial("id").primaryKey(),
   shipmentId: integer("shipment_id").references(() => shipments.id),
   purpose: text("purpose").notNull(), // weight_review | notes_draft | eval
   provider: text("provider").notNull(),
   model: text("model").notNull(),
-  /** Per-MR policy applied, e.g. [{ project: "group/svc", iid: 45, level: "metadata" }]. */
+  // Per-MR policy applied, e.g. [{ project: "group/svc", iid: 45, level: "metadata" }].
   sources: jsonb("sources")
     .$type<Array<{ project: string; iid: number; kind: "issue" | "mr"; level: string }>>()
     .notNull(),

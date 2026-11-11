@@ -16,18 +16,18 @@ export interface RecipientCandidates {
 
 export interface Recipient {
   gitlabId: number;
-  /** Linked Shiplog user, or null when no candidate is linked (→ unclaimed). */
+  // Linked Shiplog user, or null when no candidate is linked (→ unclaimed).
   userId: string | null;
 }
 
-/** Candidates in D4 order, without repeats. */
+// Candidates in D4 order, without repeats.
 export function candidateOrder(c: RecipientCandidates): number[] {
   const ordered = [...c.assigneeGitlabIds, ...c.mrAuthorGitlabIds];
   if (c.labelAppliedByGitlabId !== null) ordered.push(c.labelAppliedByGitlabId);
   return [...new Set(ordered)];
 }
 
-/** Pure choice given which GitLab IDs are linked (GitLab ID → Shiplog user ID). */
+// Pure choice given which GitLab IDs are linked (GitLab ID → Shiplog user ID).
 export function pickRecipient(
   c: RecipientCandidates,
   linked: ReadonlyMap<number, string>,
@@ -39,7 +39,7 @@ export function pickRecipient(
   return { gitlabId: first, userId: linked.get(first)! };
 }
 
-/** GitLab user ID → Shiplog user ID for the given GitLab IDs that have linked accounts. */
+// GitLab user ID → Shiplog user ID for the given GitLab IDs that have linked accounts.
 export async function linkedGitlabUsers(gitlabIds: number[]): Promise<Map<number, string>> {
   if (gitlabIds.length === 0) return new Map();
   const rows = await db()

@@ -18,7 +18,7 @@ export function loadDataPolicy(_path = "config/data-policy.yaml"): DataPolicy {
   return notImplemented("loadDataPolicy", "v1.5");
 }
 
-/** Most specific wins: project → deepest matching group → default. */
+// Most specific wins: project → deepest matching group → default.
 export function resolvePolicy(_policy: DataPolicy, _projectPath: string): PolicyLevel {
   return notImplemented("resolvePolicy", "v1.5");
 }

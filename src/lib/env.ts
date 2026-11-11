@@ -24,7 +24,7 @@ const schema = z.object({
 
   GITLAB_BASE_URL: z.url().default("https://gitlab.com"),
   GITLAB_GROUP_PATH: z.string().min(1),
-  /** Fallback for the "Connect GitLab" membership check when the token can't list group members (a project token in development). */
+  // Fallback for the "Connect GitLab" membership check when the token can't list group members (a project token in development).
   GITLAB_MEMBERSHIP_PROJECT: z.string().optional(),
   GITLAB_WEBHOOK_SECRET: z.string().min(1),
   GITLAB_API_TOKEN: z.string().min(1),
@@ -34,14 +34,14 @@ const schema = z.object({
   LABEL_DONE: z.string().default("Development: Done"),
   LABEL_BRANCH_PREFIX: z.string().default("Branch: "),
   LABEL_WEIGHT_PREFIX: z.string().default("Weight: "),
-  /** Work item statuses that ship an issue, comma-separated (D44). */
+  // Work item statuses that ship an issue, comma-separated (D44).
   STATUS_TRIGGERS: z.string().default("Done,Deployed Main,Deployed Staging"),
-  /** A trigger status starting with this names the branch: "Deployed Main" → Main. */
+  // A trigger status starting with this names the branch: "Deployed Main" → Main.
   STATUS_DEPLOYED_PREFIX: z.string().default("Deployed "),
 
   REMINDER_AFTER_HOURS: z.coerce.number().positive().default(4),
   AUTO_PUBLISH_AFTER_HOURS: z.coerce.number().positive().default(24),
-  /** Branch buttons in the "which branch?" DM. */
+  // Branch buttons in the "which branch?" DM.
   BRANCH_CHOICES: z.string().default("Main,Staging"),
 
   LLM_ENABLED: z.stringbool().default(false),

@@ -29,7 +29,7 @@ async function main() {
     await boss.createQueue(name, { retryLimit: 5, retryBackoff: true, retryDelay: 10 });
   }
 
-  /** Runs a handler for each job in the batch. */
+  // Runs a handler for each job in the batch.
   const each =
     <T extends object>(handler: (data: T) => Promise<unknown>) =>
     async (jobs: Array<{ data: T }>) => {

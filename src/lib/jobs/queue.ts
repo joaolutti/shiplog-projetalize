@@ -28,12 +28,12 @@ function boss(): Promise<PgBoss> {
   return g.__shiplogBoss;
 }
 
-/** With `tx`, the job is written in that transaction: it exists only if the transaction commits. */
+// With `tx`, the job is written in that transaction: it exists only if the transaction commits.
 export async function enqueue(name: JobName, data: object, options: SendOptions = {}, tx?: Tx): Promise<void> {
   await (await boss()).send(name, data, tx ? { ...options, db: inTransaction(tx) } : options);
 }
 
-/** pg-boss's db adapter over a Drizzle (postgres-js) transaction. */
+// pg-boss's db adapter over a Drizzle (postgres-js) transaction.
 function inTransaction(tx: Tx): Db {
   // Drizzle's postgres-js session keeps the transaction's client here.
   const { client } = tx._.session as unknown as { client: TransactionSql };

@@ -29,7 +29,7 @@ export function labelConfig(): LabelConfig {
   };
 }
 
-/** Value after `prefix` when `label` starts with it, else null. */
+// Value after `prefix` when `label` starts with it, else null.
 function valueAfter(label: string, prefix: string): string | null {
   const l = label.trim();
   const p = prefix.trim().toLowerCase();
@@ -58,7 +58,7 @@ export function parseLabels(labels: string[], config: LabelConfig = labelConfig(
   return { done, branches, labelWeight };
 }
 
-/** True only when the Done label was *added* in this event (uses `changes.labels`). */
+// True only when the Done label was *added* in this event (uses `changes.labels`).
 export function doneLabelAdded(
   previous: string[],
   current: string[],

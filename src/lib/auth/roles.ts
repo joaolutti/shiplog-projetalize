@@ -1,4 +1,4 @@
-/** Role changes (D17). Only leads change roles; the last lead can't step down. */
+// Role changes (D17). Only leads change roles; the last lead can't step down.
 import { and, eq, ne } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { user } from "@/lib/db/schema";

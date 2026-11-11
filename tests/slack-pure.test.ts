@@ -1,4 +1,4 @@
-/** M3 pure pieces: request signing, DM allowlist, requester matching, Block Kit snapshots. */
+// M3 pure pieces: request signing, DM allowlist, requester matching, Block Kit snapshots.
 import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { ACTIONS, editNotesModal, feedCard, leadsUnclaimedDm, recipientDm, reminderReply, requesterDm } from "@/lib/slack/blocks";

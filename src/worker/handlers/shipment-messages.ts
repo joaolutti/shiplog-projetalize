@@ -27,7 +27,7 @@ const log = (job: string, msg: string) => console.log(`[${job}] ${msg}`);
 
 const appUrl = () => env("APP_URL").replace(/\/+$/, "");
 
-/** The recipient's DM for the current status: posted once, then updated in place. */
+// The recipient's DM for the current status: posted once, then updated in place.
 export async function syncRecipientDm({ shipmentId }: ShipmentJob): Promise<void> {
   const s = await loadShipment(shipmentId);
   if (!s?.recipientUserId) return log("sync-recipient-dm", `${shipmentId}: no recipient`);
@@ -65,7 +65,7 @@ async function resolveTicketRequester(ticketId: number): Promise<void> {
     .where(and(eq(tickets.id, ticketId), eq(tickets.requesterSource, "none")));
 }
 
-/** DM every lead once about an unclaimed shipment (D10). */
+// DM every lead once about an unclaimed shipment (D10).
 export async function notifyLeadsUnclaimed({ shipmentId }: ShipmentJob): Promise<void> {
   const s = await loadShipment(shipmentId);
   if (!s || s.view.status !== "unclaimed" || s.leadsNotifiedAt) return;
@@ -75,7 +75,7 @@ export async function notifyLeadsUnclaimed({ shipmentId }: ShipmentJob): Promise
   log("notify-leads-unclaimed", `${shipmentId}: ${leads.length} lead(s)`);
 }
 
-/** One reminder in the draft's thread, if this draft cycle is still waiting (D8). */
+// One reminder in the draft's thread, if this draft cycle is still waiting (D8).
 export async function sendReminder({ shipmentId, cycle }: TimerJob): Promise<void> {
   const s = await loadShipment(shipmentId);
   if (!s || s.view.status !== "pending_confirmation" || s.pendingSince?.toISOString() !== cycle) return;
@@ -85,13 +85,13 @@ export async function sendReminder({ shipmentId, cycle }: TimerJob): Promise<voi
   await db().update(shipments).set({ reminderSentAt: new Date() }).where(eq(shipments.id, shipmentId));
 }
 
-/** Publishes an unanswered draft as is, flagged "notas não confirmadas" (D8). */
+// Publishes an unanswered draft as is, flagged "notas não confirmadas" (D8).
 export async function runAutoPublish({ shipmentId, cycle }: TimerJob): Promise<void> {
   const step = await execute((tx) => autoPublish(tx, { actor: { kind: "system" }, shipmentId, cycle }));
   log("auto-publish", `${shipmentId}: ${JSON.stringify(step)}`);
 }
 
-/** Channel card (D9), then the recipient's DM shows "publicada" and the requester is DMed (D11). */
+// Channel card (D9), then the recipient's DM shows "publicada" and the requester is DMed (D11).
 export async function publishShipment({ shipmentId }: ShipmentJob): Promise<void> {
   const loaded = await loadShipment(shipmentId);
   if (!loaded || loaded.view.status !== "published") return;
@@ -112,7 +112,7 @@ export async function publishShipment({ shipmentId }: ShipmentJob): Promise<void
   await syncRequesterDm({ shipmentId });
 }
 
-/** The requester's DM, reflecting their own verification, if any. */
+// The requester's DM, reflecting their own verification, if any.
 export async function syncRequesterDm({ shipmentId }: ShipmentJob): Promise<void> {
   const s = await loadShipment(shipmentId);
   if (!s || s.view.status !== "published" || s.view.requester.kind !== "resolved") return;
@@ -135,7 +135,7 @@ export async function syncRequesterDm({ shipmentId }: ShipmentJob): Promise<void
     .where(eq(shipments.id, shipmentId));
 }
 
-/** DMs the dev (or the leads, when nobody owns it) that someone reported a problem. */
+// DMs the dev (or the leads, when nobody owns it) that someone reported a problem.
 export async function notifyIssueReported({ shipmentId, commentId }: ShipmentJob & { commentId: number }): Promise<void> {
   const s = await loadShipment(shipmentId);
   if (!s) return;

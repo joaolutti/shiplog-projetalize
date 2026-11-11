@@ -97,7 +97,7 @@ async function deliver(eventType: string, payload: unknown) {
   return ingestGitlabEvent(row.id);
 }
 
-/** Issue Hook where the labels changed from `previous` to `current`. Also updates the mock issue. */
+// Issue Hook where the labels changed from `previous` to `current`. Also updates the mock issue.
 function labelsChanged(previous: string[], current: string[], opts: { action?: string; userId?: number } = {}) {
   gitlab.issue = issue(current, gitlab.issue ? { assigneeIds: gitlab.issue.assigneeIds } : {});
   const asLabels = (titles: string[]) => titles.map((title, i) => ({ id: i + 1, title }));
@@ -415,7 +415,7 @@ describe.skipIf(!hasDb)("ingest: Merge Request Hook", () => {
   });
 });
 
-/** Issue Hook where the work item Status moved from `previous` to `current` (labels unchanged). */
+// Issue Hook where the work item Status moved from `previous` to `current` (labels unchanged).
 function statusChanged(previous: string, current: string, labels: string[] = []) {
   gitlab.issue = issue(labels);
   const status = (name: string) => ({ id: `gid://gitlab/WorkItems::Statuses::Custom::Status/${name}`, name, category: "done" });

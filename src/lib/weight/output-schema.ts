@@ -1,7 +1,7 @@
-/** Structured output contract for the weight second opinion (SCOPE.md §7). */
+// Structured output contract for the weight second opinion (SCOPE.md §7).
 import { z } from "zod";
 
-/** TODO(leads): confirm the scale's top value. */
+// TODO(leads): confirm the scale's top value.
 export const WEIGHT_SCALE = [1, 2, 3, 5, 8, 13] as const;
 
 export const weightReviewOutput = z.object({

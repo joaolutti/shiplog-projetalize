@@ -24,7 +24,7 @@ export interface IdentityRules {
   isOrgMember: (gitlabUserId: number) => Promise<boolean>;
 }
 
-/** Slack's OIDC claim for the workspace. */
+// Slack's OIDC claim for the workspace.
 const SLACK_TEAM_CLAIM = "https://slack.com/team_id";
 
 export async function checkIdentity(
@@ -58,7 +58,7 @@ export async function checkIdentity(
   return { error: "provider_not_allowed", message: "Use o Slack para entrar." };
 }
 
-/** Developer access or above. Guests and minimal access don't count as team members. */
+// Developer access or above. Guests and minimal access don't count as team members.
 const DEVELOPER = 30;
 
 /**

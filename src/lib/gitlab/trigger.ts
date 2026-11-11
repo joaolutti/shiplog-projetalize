@@ -28,9 +28,9 @@ export function triggerConfig(): TriggerConfig {
 }
 
 export interface ShipState {
-  /** Done label present or a trigger Status set. */
+  // Done label present or a trigger Status set.
   triggered: boolean;
-  /** Where it ships: the Deployed status's branch, else the Branch labels. */
+  // Where it ships: the Deployed status's branch, else the Branch labels.
   branches: string[];
 }
 
@@ -57,9 +57,9 @@ export function shipState(
 }
 
 export interface ShipChange {
-  /** Became triggered in this event: ship every branch (or ask for one). Re-ships a published branch. */
+  // Became triggered in this event: ship every branch (or ask for one). Re-ships a published branch.
   started: boolean;
-  /** Already triggered, and these branches are new (branch promotion). */
+  // Already triggered, and these branches are new (branch promotion).
   newBranches: string[];
 }
 

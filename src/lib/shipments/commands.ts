@@ -41,7 +41,7 @@ export class CommandError extends Error {
   }
 }
 
-/** System, leads, and the shipment's recipient may answer its gates. */
+// System, leads, and the shipment's recipient may answer its gates.
 function authorizeGateAnswer(actor: Actor, shipment: Shipment): void {
   if (actor.kind === "system" || actor.role === "lead") return;
   if (actor.userId === shipment.recipientUserId) return;
@@ -54,7 +54,7 @@ async function loadForUpdate(tx: Tx, shipmentId: number): Promise<Shipment> {
   return shipment;
 }
 
-/** Open related MRs on the shipment's snapshot. Closed-without-merge MRs don't block. */
+// Open related MRs on the shipment's snapshot. Closed-without-merge MRs don't block.
 async function openMrIds(tx: Tx, shipmentId: number): Promise<number[]> {
   const rows = await tx
     .select({ id: shipmentMergeRequests.gitlabMrId, state: shipmentMergeRequests.state })
@@ -78,7 +78,7 @@ export function timelineEntry(event: string, data?: Record<string, unknown>): Ti
   return data ? { at: new Date().toISOString(), event, data } : { at: new Date().toISOString(), event };
 }
 
-/** Runs `event` on a locked shipment; an invalid transition becomes a noop step, not a throw. */
+// Runs `event` on a locked shipment; an invalid transition becomes a noop step, not a throw.
 async function apply(
   tx: Tx,
   shipment: Shipment,
@@ -158,7 +158,7 @@ export async function pickBranch(
   );
 }
 
-/** MR Hook: all related MRs merged (or closed) → the held shipment moves on to the draft. */
+// MR Hook: all related MRs merged (or closed) → the held shipment moves on to the draft.
 export async function releaseHeld(tx: Tx, args: { actor: Actor; shipmentId: number }): Promise<NextStep> {
   const shipment = await loadForUpdate(tx, args.shipmentId);
   if (args.actor.kind !== "system") {
@@ -228,7 +228,7 @@ export async function reship(
   return step;
 }
 
-/** Adds a timeline entry to every shipment of a ticket (e.g. the issue was reopened). */
+// Adds a timeline entry to every shipment of a ticket (e.g. the issue was reopened).
 export async function noteOnTicketShipments(tx: Tx, ticketId: number, entry: TimelineEntry): Promise<void> {
   await tx
     .update(shipments)
@@ -236,7 +236,7 @@ export async function noteOnTicketShipments(tx: Tx, ticketId: number, entry: Tim
     .where(eq(shipments.ticketId, ticketId));
 }
 
-/** The branchless (needs_branch) shipment of a ticket, locked, if any. */
+// The branchless (needs_branch) shipment of a ticket, locked, if any.
 export async function findBranchless(tx: Tx, ticketId: number): Promise<Shipment | undefined> {
   const [row] = await tx
     .select()
@@ -280,7 +280,7 @@ export async function assignRecipient(
   );
 }
 
-/** Leads' unclaimed queue: publishes as is (published_via = lead). The draft notes become final. */
+// Leads' unclaimed queue: publishes as is (published_via = lead). The draft notes become final.
 export async function leadPublish(tx: Tx, args: { actor: Actor; shipmentId: number }): Promise<NextStep> {
   requireLead(args.actor);
   const shipment = await loadForUpdate(tx, args.shipmentId);
@@ -297,21 +297,21 @@ const actorId = (actor: Actor) => (actor.kind === "user" ? actor.userId : "syste
 
 // ── M3: recipient DM ─────────────────────────────────────────────────
 
-/** "Aguardar o merge": released by the MR Hook once nothing is open (releaseHeld). */
+// "Aguardar o merge": released by the MR Hook once nothing is open (releaseHeld).
 export async function holdUntilMerged(tx: Tx, args: { actor: Actor; shipmentId: number }): Promise<NextStep> {
   const shipment = await loadForUpdate(tx, args.shipmentId);
   authorizeGateAnswer(args.actor, shipment);
   return apply(tx, shipment, "hold_until_merged", gateCtx(shipment), { by: actorId(args.actor) });
 }
 
-/** "Publicar mesmo assim": skips the open-MR gate and goes to the draft. */
+// "Publicar mesmo assim": skips the open-MR gate and goes to the draft.
 export async function publishAnyway(tx: Tx, args: { actor: Actor; shipmentId: number }): Promise<NextStep> {
   const shipment = await loadForUpdate(tx, args.shipmentId);
   authorizeGateAnswer(args.actor, shipment);
   return apply(tx, shipment, "publish_anyway", gateCtx(shipment), { by: actorId(args.actor) });
 }
 
-/** "Confirmar e publicar": the notes as they stand become final. */
+// "Confirmar e publicar": the notes as they stand become final.
 export async function confirm(tx: Tx, args: { actor: Actor; shipmentId: number }): Promise<NextStep> {
   const shipment = await loadForUpdate(tx, args.shipmentId);
   authorizeGateAnswer(args.actor, shipment);
@@ -340,7 +340,7 @@ export async function autoPublish(
   return apply(tx, shipment, "auto_publish", { ...gateCtx(shipment), notesFinal: shipment.notesFinal ?? shipment.notesDraft });
 }
 
-/** "Editar notas": what the dev writes replaces the draft; after publishing it updates the card. */
+// "Editar notas": what the dev writes replaces the draft; after publishing it updates the card.
 export async function editNotes(
   tx: Tx,
   args: { actor: Actor; shipmentId: number; notes: string },
@@ -358,7 +358,7 @@ export async function editNotes(
   return { kind: "refresh", shipmentId: shipment.id };
 }
 
-/** The dev picks the requester when the Solicitante name didn't match one Slack user. */
+// The dev picks the requester when the Solicitante name didn't match one Slack user.
 export async function pickRequester(
   tx: Tx,
   args: { actor: Actor; shipmentId: number; slackUserId: string },
@@ -376,7 +376,7 @@ export async function pickRequester(
   return { kind: "refresh", shipmentId: shipment.id };
 }
 
-/** A comment on the ticket's thread (D13), optionally about this shipment. Anyone signed in. */
+// A comment on the ticket's thread (D13), optionally about this shipment. Anyone signed in.
 export async function addComment(
   tx: Tx,
   args: { actor: Actor; shipmentId: number; body: string; source: "web" | "slack_dm" },
@@ -392,7 +392,7 @@ export async function addComment(
   return { step: { kind: "comment_added", shipmentId: shipment.id, commentId: comment.id }, commentId: comment.id };
 }
 
-/** "Marcar no anúncio": who gets @mentioned on the channel card (the requester always is). */
+// "Marcar no anúncio": who gets @mentioned on the channel card (the requester always is).
 export async function setMentions(
   tx: Tx,
   args: { actor: Actor; shipmentId: number; slackUserIds: string[] },
@@ -412,7 +412,7 @@ export async function setMentions(
 
 // ── M3: verification (D12, D41) ──────────────────────────────────────
 
-/** any issue_reported → issue_reported; else any verified → verified; else unverified. */
+// any issue_reported → issue_reported; else any verified → verified; else unverified.
 async function recomputeVerification(tx: Tx, shipmentId: number) {
   const rows = await tx.select({ kind: verifications.kind }).from(verifications).where(eq(verifications.shipmentId, shipmentId));
   const status = rows.some((r) => r.kind === "issue_reported")
@@ -451,7 +451,7 @@ async function setVerification(
     .where(eq(shipments.id, shipment.id));
 }
 
-/** Anyone verifies a published shipment; a reporter can change their own row back (D41). */
+// Anyone verifies a published shipment; a reporter can change their own row back (D41).
 export async function verify(tx: Tx, args: { actor: Actor; shipmentId: number }): Promise<NextStep> {
   if (args.actor.kind !== "user") throw new CommandError("forbidden", "verification comes from people");
   const shipment = await loadForUpdate(tx, args.shipmentId);
@@ -460,7 +460,7 @@ export async function verify(tx: Tx, args: { actor: Actor; shipmentId: number })
   return { kind: "verification_changed", shipmentId: shipment.id };
 }
 
-/** Anyone reports a problem: a thread comment plus their verification row; the dev is DMed. */
+// Anyone reports a problem: a thread comment plus their verification row; the dev is DMed.
 export async function reportIssue(
   tx: Tx,
   args: { actor: Actor; shipmentId: number; comment: string; source: "web" | "slack_dm" },

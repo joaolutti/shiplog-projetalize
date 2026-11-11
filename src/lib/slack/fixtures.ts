@@ -1,4 +1,4 @@
-/** Sample shipments for /dev/slack-preview and the Block Kit snapshot tests. */
+// Sample shipments for /dev/slack-preview and the Block Kit snapshot tests.
 import type { ShipmentView } from "./blocks";
 
 const base: ShipmentView = {

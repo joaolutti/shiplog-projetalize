@@ -1,4 +1,4 @@
-/** Behaviour spec for M1 label handling (SCOPE.md §4). */
+// Behaviour spec for M1 label handling (SCOPE.md §4).
 import { describe, expect, it } from "vitest";
 import { branchesAdded, doneLabelAdded, parseLabels, type LabelConfig } from "@/lib/gitlab/labels";
 

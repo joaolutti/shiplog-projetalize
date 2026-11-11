@@ -62,7 +62,7 @@ const viewSubmission = z.object({
 export const interactionPayload = z.discriminatedUnion("type", [blockActions, viewSubmission]);
 export type InteractionPayload = z.infer<typeof interactionPayload>;
 
-/** Slack posts `payload=<json>` form-encoded. Unknown interaction types return null. */
+// Slack posts `payload=<json>` form-encoded. Unknown interaction types return null.
 export function parseInteraction(rawBody: string): InteractionPayload | null {
   const json = new URLSearchParams(rawBody).get("payload");
   if (!json) return null;
@@ -70,7 +70,7 @@ export function parseInteraction(rawBody: string): InteractionPayload | null {
   return parsed.success ? parsed.data : null;
 }
 
-/** Buttons that open a modal, which must happen inline in the route. */
+// Buttons that open a modal, which must happen inline in the route.
 export async function modalFor(payload: InteractionPayload): Promise<ModalView | null> {
   if (payload.type !== "block_actions") return null;
   const a = payload.actions[0];
@@ -89,14 +89,14 @@ export async function modalFor(payload: InteractionPayload): Promise<ModalView |
   }
 }
 
-/** Links and modal-opening buttons need no work after the route acknowledges them. */
+// Links and modal-opening buttons need no work after the route acknowledges them.
 export function needsWork(payload: InteractionPayload): boolean {
   if (payload.type === "view_submission") return true;
   const id = payload.actions[0].action_id;
   return ![ACTIONS.openLink, ACTIONS.editNotes, ACTIONS.addComment, ACTIONS.reportIssue].includes(id as never);
 }
 
-/** Runs the command behind an interaction (in the worker), with its follow-ups. */
+// Runs the command behind an interaction (in the worker), with its follow-ups.
 export async function handleInteraction(payload: InteractionPayload): Promise<NextStep | null> {
   try {
     return await runCommand(payload);
@@ -173,14 +173,14 @@ async function runCommand(payload: InteractionPayload): Promise<NextStep | null>
   }
 }
 
-/** Devs and leads: must already have a Shiplog account (signed in with Slack). */
+// Devs and leads: must already have a Shiplog account (signed in with Slack).
 async function teamActor(slackUserId: string): Promise<Actor> {
   const found = (await usersBySlackId([slackUserId])).get(slackUserId);
   if (!found) throw new CommandError("forbidden", "sign in to Shiplog first");
   return { kind: "user", userId: found.id, role: found.role };
 }
 
-/** Anyone in the workspace may verify, report or comment (D12): created on first contact. */
+// Anyone in the workspace may verify, report or comment (D12): created on first contact.
 async function anyoneActor(slackUserId: string): Promise<Actor> {
   const found = await ensureSlackUser(slackUserId);
   return { kind: "user", userId: found.id, role: found.role };

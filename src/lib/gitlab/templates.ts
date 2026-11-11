@@ -14,7 +14,7 @@ function stripComments(markdown: string): string {
   return markdown.replace(/<!--[\s\S]*?-->/g, "");
 }
 
-/** Cells of a Markdown table row, or null when the line isn't one. */
+// Cells of a Markdown table row, or null when the line isn't one.
 function tableCells(line: string | undefined): string[] | null {
   const t = line?.trim() ?? "";
   if (!t.startsWith("|")) return null;
@@ -59,7 +59,7 @@ export function parseRequester(description: string | null | undefined): Requeste
   return { kind: "name", value };
 }
 
-/** Body of the `## Notas de entrega` section (any heading level), or null when missing or empty. */
+// Body of the `## Notas de entrega` section (any heading level), or null when missing or empty.
 export function parseDeliveryNotes(description: string | null | undefined): string | null {
   if (!description) return null;
   const lines = stripComments(description).split(/\r?\n/);
@@ -79,7 +79,7 @@ export function parseDeliveryNotes(description: string | null | undefined): stri
   return text === "" ? null : text;
 }
 
-/** HubSpot links referenced in an issue (displayed only; no HubSpot integration). */
+// HubSpot links referenced in an issue (displayed only; no HubSpot integration).
 export function extractHubspotUrls(description: string | null | undefined): string[] {
   if (!description) return [];
   const urls = description.match(/https?:\/\/[\w.-]*hubspot\.com\/[^\s)>\]"']*/gi) ?? [];

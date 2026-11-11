@@ -1,4 +1,4 @@
-/** Behaviour spec for the issue/MR template readers (SCOPE.md §5, D16 revised, D16a). */
+// Behaviour spec for the issue/MR template readers (SCOPE.md §5, D16 revised, D16a).
 import { describe, expect, it } from "vitest";
 import { extractHubspotUrls, parseDeliveryNotes, parseRequester } from "@/lib/gitlab/templates";
 

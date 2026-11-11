@@ -12,7 +12,7 @@ export type PublishedVia = "confirmed" | "auto" | "lead";
 export interface GateContext {
   recipientUserId: string | null;
   branch: string | null;
-  /** Related MRs still open. MRs closed without merging don't count. */
+  // Related MRs still open. MRs closed without merging don't count.
   openMrCount: number;
 }
 
@@ -36,7 +36,7 @@ export type TransitionResult =
   | { ok: true; status: ShipmentStatus; publishedVia?: PublishedVia }
   | { ok: false; error: TransitionError };
 
-/** The first gate that applies; `pending_confirmation` when all are answered. */
+// The first gate that applies; `pending_confirmation` when all are answered.
 export function gateStatus(ctx: GateContext): ShipmentStatus {
   if (!ctx.recipientUserId) return "unclaimed";
   if (ctx.branch === null) return "needs_branch";

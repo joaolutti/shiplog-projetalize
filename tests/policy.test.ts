@@ -1,4 +1,4 @@
-/** Behaviour spec for v1.5 data policy + redaction (SCOPE.md §8). */
+// Behaviour spec for v1.5 data policy + redaction (SCOPE.md §8).
 import { describe, it } from "vitest";
 
 describe("resolvePolicy", () => {

@@ -1,4 +1,4 @@
-/** Real-Postgres helpers for database tests. Use `describe.skipIf(!hasDb)`. */
+// Real-Postgres helpers for database tests. Use `describe.skipIf(!hasDb)`.
 import { sql } from "drizzle-orm";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { db } from "@/lib/db/client";
@@ -7,7 +7,7 @@ export const hasDb = Boolean(process.env.TEST_DATABASE_URL);
 
 let migrated = false;
 
-/** Migrates once per file, then empties every app table. */
+// Migrates once per file, then empties every app table.
 export async function resetDb(): Promise<void> {
   if (!migrated) {
     await migrate(db(), { migrationsFolder: "drizzle" });

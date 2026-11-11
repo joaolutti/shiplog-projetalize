@@ -1,4 +1,4 @@
-/** Who may sign in and connect GitLab (D14, D15). */
+// Who may sign in and connect GitLab (D14, D15).
 import { describe, expect, it, vi } from "vitest";
 import { checkIdentity, type IdentityRules, type IdentitySource } from "@/lib/auth/identity";
 
