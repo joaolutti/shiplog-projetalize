@@ -147,7 +147,10 @@ export async function notifyIssueReported({ shipmentId, commentId }: ShipmentJob
   for (const target of targets) await sendDm(target, message);
 }
 
-/** A new comment shows up in the thread of the recipient's DM (D13: the thread lives in Shiplog). */
+/**
+ * Someone else's comment shows up in the thread of the recipient's DM (D13: the thread lives in
+ * Shiplog). The recipient's own comments aren't echoed back to them.
+ */
 export async function notifyComment({ shipmentId, commentId }: ShipmentJob & { commentId: number }): Promise<void> {
   const s = await loadShipment(shipmentId);
   if (!s?.dm) return log("notify-comment", `${shipmentId}: no recipient DM to reply under`);
@@ -156,6 +159,6 @@ export async function notifyComment({ shipmentId, commentId }: ShipmentJob & { c
     .from(comments)
     .innerJoin(user, eq(user.id, comments.authorUserId))
     .where(eq(comments.id, commentId));
-  if (!row) return;
+  if (!row || row.authorUserId === s.recipientUserId) return;
   await reply(s.dm, commentReply(await slackIdOf(row.authorUserId), row.authorName, row.body));
 }

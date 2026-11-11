@@ -285,8 +285,9 @@ The code is provider-agnostic: the AI SDK with an OpenAI-compatible base URL, co
   what gets published, and editing after publishing updates the channel card.
 - **Tagging.** The draft DM has a "Marcar no anúncio" people picker; the people chosen are @mentioned on the
   channel card (and listed on the published DM). The requester is always mentioned.
-- **Comments.** "Comentar" adds to the ticket's thread in Shiplog (D13) and is echoed as a reply in the recipient's
-  DM thread, so it's visible right away. The web thread arrives with M4.
+- **Comments.** "Comentar" adds to the ticket's thread in Shiplog (D13). Comments by anyone other than the recipient
+  are echoed as replies in the recipient's DM thread; their own aren't, to keep the thread short. The web thread
+  arrives with M4.
 - **Timers.** The reminder (4 h) and auto-publish (24 h) belong to one draft cycle: a confirm, re-ship or reopen in
   between cancels them.
 - **Requester.** Matched against the Slack directory when the draft goes out; if there's no single match, the draft

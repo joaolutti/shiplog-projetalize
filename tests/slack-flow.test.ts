@@ -225,19 +225,23 @@ describe.skipIf(!hasDb)("buttons and modals", () => {
     expect((await db().select().from(tickets))[0]).toMatchObject({ requesterSlackId: "U_PICKED", requesterSource: "dev_picked" });
   });
 
-  it("Comentar saves to the ticket thread and replies under the draft DM", async () => {
+  it("Comentar saves to the ticket thread; only other people's comments are echoed in the DM thread", async () => {
     const s = await seed();
     await syncRecipientDm({ shipmentId: s.id });
     queue.jobs = [];
     slackApi.sent = [];
 
     await handleInteraction(submit("U_DEV", MODALS.addComment, s.id, "Testado em staging"));
-    const [comment] = await db().select().from(comments);
-    expect(comment).toMatchObject({ body: "Testado em staging", ticketId: s.ticketId, shipmentId: s.id });
-    expect(queue.jobs).toEqual([{ name: "notify-comment", data: { shipmentId: s.id, commentId: comment.id }, options: undefined }]);
+    const [own] = await db().select().from(comments);
+    expect(own).toMatchObject({ body: "Testado em staging", ticketId: s.ticketId, shipmentId: s.id });
+    expect(queue.jobs).toEqual([{ name: "notify-comment", data: { shipmentId: s.id, commentId: own.id }, options: undefined }]);
+    await notifyComment({ shipmentId: s.id, commentId: own.id });
+    expect(slackApi.sent).toEqual([]);
 
-    await notifyComment({ shipmentId: s.id, commentId: comment.id });
-    expect(slackApi.sent).toEqual([{ kind: "reply", to: "D_U_DEV/1", text: "Comentário de Dev" }]);
+    await handleInteraction(submit("U_OTHER", MODALS.addComment, s.id, "Vi aqui também"));
+    const other = (await db().select().from(comments)).find((c) => c.body === "Vi aqui também")!;
+    await notifyComment({ shipmentId: s.id, commentId: other.id });
+    expect(slackApi.sent).toEqual([{ kind: "reply", to: "D_U_DEV/1", text: "Comentário de Outro dev" }]);
   });
 
   it("Marcar no anúncio stores who to @mention; the card tags them", async () => {
