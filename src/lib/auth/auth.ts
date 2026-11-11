@@ -43,6 +43,9 @@ function create() {
         clientId: env("GITLAB_OAUTH_CLIENT_ID"),
         clientSecret: env("GITLAB_OAUTH_CLIENT_SECRET"),
         disableSignUp: true,
+        // GitLab's /api/v4/user has no email_verified, so Better Auth would treat every GitLab
+        // email as unverified and refuse to link. confirmed_at is set once the email is confirmed.
+        mapProfileToUser: (profile) => ({ emailVerified: Boolean(profile.confirmed_at) }),
       },
     },
     databaseHooks: {

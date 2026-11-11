@@ -9,6 +9,7 @@ const ROLE_LABEL: Record<Role, string> = { member: "Membro", dev: "Dev", lead: "
 const LINK_ERRORS: Record<string, string> = {
   not_in_group: "Essa conta do GitLab não faz parte do grupo da empresa (acesso de Developer ou mais).",
   account_already_linked_to_different_user: "Essa conta do GitLab já está conectada a outra pessoa.",
+  unable_to_link_account: "O GitLab não confirmou o e-mail dessa conta. Confirme o e-mail no GitLab e tente de novo.",
 };
 
 export default function SettingsPage({ searchParams }: PageProps<"/settings">) {
