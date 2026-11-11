@@ -8,7 +8,7 @@
  * same transaction (effects.ts `execute` / `dispatch`).
  *
  * M1: what ingest needs. M2: the leads' unclaimed queue. M3: everything the Slack messages
- * trigger (gates, draft, verification). requestReverification and the weight review come later.
+ * trigger (gates, draft, verification). M4: unverify, requestReverification. The weight review comes later.
  */
 import { and, eq, isNull, sql } from "drizzle-orm";
 import type { db } from "@/lib/db/client";
@@ -475,6 +475,61 @@ export async function reportIssue(
     .returning({ id: comments.id });
   await setVerification(tx, shipment, args.actor.userId, "issue_reported", comment.id);
   return { kind: "issue_reported", shipmentId: shipment.id, commentId: comment.id };
+}
+
+// "Você verificou · desfazer": the actor removes their own verification row.
+export async function unverify(tx: Tx, args: { actor: Actor; shipmentId: number }): Promise<NextStep> {
+  if (args.actor.kind !== "user") throw new CommandError("forbidden", "verification comes from people");
+  const shipment = await loadForUpdate(tx, args.shipmentId);
+  if (shipment.status !== "published") return { kind: "noop", reason: `shipment ${shipment.id} isn't published` };
+  const [removed] = await tx
+    .delete(verifications)
+    .where(and(eq(verifications.shipmentId, shipment.id), eq(verifications.userId, args.actor.userId)))
+    .returning({ kind: verifications.kind });
+  if (!removed) return { kind: "noop", reason: `shipment ${shipment.id}: ${args.actor.userId} hasn't verified` };
+  const status = await recomputeVerification(tx, shipment.id);
+  await tx
+    .update(shipments)
+    .set({
+      timeline: [...shipment.timeline, timelineEntry("unverified", { by: args.actor.userId, previous: removed.kind, verificationStatus: status })],
+    })
+    .where(eq(shipments.id, shipment.id));
+  return { kind: "verification_changed", shipmentId: shipment.id };
+}
+
+const REVERIFY_EVERY_MS = 60 * 60 * 1000;
+
+// "Pedir nova verificação" (D41): the recipient or a lead asks the reporters to check again, once an hour.
+export async function requestReverification(tx: Tx, args: { actor: Actor; shipmentId: number }): Promise<NextStep> {
+  if (args.actor.kind !== "user") throw new CommandError("forbidden", "reverification is asked by people");
+  const shipment = await loadForUpdate(tx, args.shipmentId);
+  authorizeGateAnswer(args.actor, shipment);
+  if (shipment.verificationStatus !== "issue_reported") {
+    return { kind: "noop", reason: `shipment ${shipment.id} has no reported issue` };
+  }
+  const now = new Date();
+  const last = shipment.lastReverifyRequestedAt;
+  if (last && now.getTime() - last.getTime() < REVERIFY_EVERY_MS) {
+    return { kind: "noop", reason: `shipment ${shipment.id}: reverification already asked at ${last.toISOString()}` };
+  }
+  const [comment] = await tx
+    .insert(comments)
+    .values({
+      ticketId: shipment.ticketId,
+      shipmentId: shipment.id,
+      authorUserId: args.actor.userId,
+      body: "Pediu nova verificação a quem relatou problema.",
+      source: "web",
+    })
+    .returning({ id: comments.id });
+  await tx
+    .update(shipments)
+    .set({
+      lastReverifyRequestedAt: now,
+      timeline: [...shipment.timeline, timelineEntry("reverification_requested", { by: args.actor.userId, commentId: comment.id })],
+    })
+    .where(eq(shipments.id, shipment.id));
+  return { kind: "reverification_requested", shipmentId: shipment.id, commentId: comment.id };
 }
 
 const gateCtx = (shipment: Shipment) => ({ branch: shipment.branch, recipientUserId: shipment.recipientUserId });

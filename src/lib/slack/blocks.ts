@@ -370,6 +370,22 @@ export function issueReportedDm(v: ShipmentView, reporterSlackId: string | null,
   };
 }
 
+// DM to each reporter when the dev asks them to check again after a fix (D41).
+export function reverificationDm(v: ShipmentView): SlackMessage {
+  return {
+    text: `Pode conferir de novo #${v.ticket.iid}?`,
+    blocks: [
+      section(`:repeat: *O dev pediu para você conferir de novo* ${issueLink(v)} → *${esc(v.branch ?? "?")}*\nEle fez uma correção depois do problema que você reportou.`),
+      ...(v.notes ? [section(quote(v.notes))] : []),
+      actions("reverify", [
+        button("Verificar", ACTIONS.verify, String(v.id), "primary"),
+        button("Ainda com problema", ACTIONS.reportIssue, String(v.id)),
+        linkButton("Abrir no Shiplog", v.url),
+      ]),
+    ],
+  };
+}
+
 // ── Modals ───────────────────────────────────────────────────────────
 
 function textModal(args: {

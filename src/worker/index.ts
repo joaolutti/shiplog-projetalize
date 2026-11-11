@@ -12,6 +12,7 @@ import {
   notifyIssueReported,
   notifyLeadsUnclaimed,
   publishShipment,
+  requestReverification,
   runAutoPublish,
   sendReminder,
   syncRecipientDm,
@@ -45,11 +46,12 @@ async function main() {
   await boss.work<ShipmentJob>(JOBS.syncRequesterDm, each(syncRequesterDm));
   await boss.work<ShipmentJob & { commentId: number }>(JOBS.notifyIssueReported, each(notifyIssueReported));
   await boss.work<ShipmentJob & { commentId: number }>(JOBS.notifyComment, each(notifyComment));
+  await boss.work<ShipmentJob>(JOBS.requestReverification, each(requestReverification));
   await boss.work<{ payload: InteractionPayload }>(
     JOBS.handleSlackInteraction,
     each(({ payload }: { payload: InteractionPayload }) => handleInteraction(payload)),
   );
-  // TODO: refresh-merge-requests, request-reverification (M4), review-weight (v1.5).
+  // TODO: refresh-merge-requests (M4), review-weight (v1.5).
 
   console.log(`[worker] started; queues: ${Object.values(JOBS).join(", ")}`);
 

@@ -18,6 +18,7 @@ import {
   recipientDm,
   reminderReply,
   requesterDm,
+  reverificationDm,
 } from "@/lib/slack/blocks";
 import { post, reply, sendDm, update } from "@/lib/slack/client";
 import { resolveRequester } from "@/lib/slack/directory";
@@ -163,4 +164,20 @@ export async function notifyComment({ shipmentId, commentId }: ShipmentJob & { c
     .where(eq(comments.id, commentId));
   if (!row || row.authorUserId === s.recipientUserId) return;
   await reply(s.dm, commentReply(await slackIdOf(row.authorUserId), row.authorName, row.body));
+}
+
+// "Pedir nova verificação" (D41): DMs everyone whose row is still issue_reported.
+export async function requestReverification({ shipmentId }: ShipmentJob): Promise<void> {
+  const s = await loadShipment(shipmentId);
+  if (!s || s.view.status !== "published") return;
+  const reporters = await db()
+    .select({ userId: verifications.userId })
+    .from(verifications)
+    .where(and(eq(verifications.shipmentId, shipmentId), eq(verifications.kind, "issue_reported")));
+  const message = reverificationDm(s.view);
+  for (const r of reporters) {
+    const slackId = await slackIdOf(r.userId);
+    if (slackId) await sendDm(slackId, message);
+    else log("request-reverification", `${shipmentId}: ${r.userId} hasn't signed in with Slack`);
+  }
 }

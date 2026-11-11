@@ -784,5 +784,63 @@ Era para o usuário 11 do GitLab, que ainda não conectou o Shiplog.",
     ],
     "text": "Entregue em Staging: #412 Corrigir login com SSO",
   },
+  "reverification": {
+    "blocks": [
+      {
+        "text": {
+          "text": ":repeat: *O dev pediu para você conferir de novo* <https://gitlab.com/acme/billing-svc/-/issues/412|#412 Corrigir login com SSO> → *Staging*
+Ele fez uma correção depois do problema que você reportou.",
+          "type": "mrkdwn",
+        },
+        "type": "section",
+      },
+      {
+        "text": {
+          "text": "> Corrige o login com SSO para clientes enterprise.
+> O botão "Entrar" volta a funcionar no Safari.",
+          "type": "mrkdwn",
+        },
+        "type": "section",
+      },
+      {
+        "block_id": "reverify",
+        "elements": [
+          {
+            "action_id": "shipment.verify",
+            "style": "primary",
+            "text": {
+              "emoji": true,
+              "text": "Verificar",
+              "type": "plain_text",
+            },
+            "type": "button",
+            "value": "7",
+          },
+          {
+            "action_id": "shipment.report_issue",
+            "text": {
+              "emoji": true,
+              "text": "Ainda com problema",
+              "type": "plain_text",
+            },
+            "type": "button",
+            "value": "7",
+          },
+          {
+            "action_id": "shipment.open_link",
+            "text": {
+              "emoji": true,
+              "text": "Abrir no Shiplog",
+              "type": "plain_text",
+            },
+            "type": "button",
+            "url": "https://shiplog.example.com/tickets/3",
+          },
+        ],
+        "type": "actions",
+      },
+    ],
+    "text": "Pode conferir de novo #412?",
+  },
 }
 `;

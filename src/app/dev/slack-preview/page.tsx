@@ -14,6 +14,7 @@ import {
   reminderReply,
   reportIssueModal,
   requesterDm,
+  reverificationDm,
 } from "@/lib/slack/blocks";
 import { FIXTURES } from "@/lib/slack/fixtures";
 
@@ -34,6 +35,7 @@ const SAMPLES: Array<{ title: string; payload: object; modal?: boolean }> = [
   { title: "Card no canal: publicação automática", payload: feedCard(FIXTURES.publishedAuto) },
   { title: "DM do solicitante", payload: requesterDm(FIXTURES.published, null) },
   { title: "DM do solicitante: verificou", payload: requesterDm(FIXTURES.published, "verified") },
+  { title: "Nova verificação (DM de quem reportou)", payload: reverificationDm(FIXTURES.published) },
   { title: "Comentário (thread do rascunho)", payload: commentReply("U0QA", "Ana", "Testei em staging, ok!") },
   { title: "Problema reportado (DM do dev)", payload: issueReportedDm(FIXTURES.published, "U0REQUESTER", "O botão ainda falha no iPhone.") },
   { title: "Modal: editar notas", payload: editNotesModal(FIXTURES.draft), modal: true },

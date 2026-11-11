@@ -1,7 +1,7 @@
 // M3 pure pieces: request signing, DM allowlist, requester matching, Block Kit snapshots.
 import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { ACTIONS, editNotesModal, feedCard, leadsUnclaimedDm, recipientDm, reminderReply, requesterDm } from "@/lib/slack/blocks";
+import { ACTIONS, editNotesModal, feedCard, leadsUnclaimedDm, recipientDm, reminderReply, requesterDm, reverificationDm } from "@/lib/slack/blocks";
 import { dmTarget } from "@/lib/slack/client";
 import { matchRequester, normalizeName, type DirectoryUser } from "@/lib/slack/directory";
 import { FIXTURES } from "@/lib/slack/fixtures";
@@ -89,7 +89,7 @@ describe("Block Kit messages", () => {
 
   it("keeps every section under Slack's 3000-character limit and the edit modal under its max_length", () => {
     const v = { ...FIXTURES.published, notes: "&&<>\n".repeat(2000) };
-    for (const msg of [recipientDm(v, opts), feedCard(v), requesterDm(v, null)]) {
+    for (const msg of [recipientDm(v, opts), feedCard(v), requesterDm(v, null), reverificationDm(v)]) {
       for (const block of msg.blocks) {
         if (block.type === "section" && block.text) expect(block.text.text.length).toBeLessThanOrEqual(3000);
       }
@@ -121,6 +121,7 @@ describe("Block Kit messages", () => {
       requester: requesterDm(FIXTURES.published, null),
       requesterVerified: requesterDm(FIXTURES.published, "verified"),
       requesterReported: requesterDm(FIXTURES.published, "issue_reported"),
+      reverification: reverificationDm(FIXTURES.published),
     }).toMatchSnapshot();
   });
 });

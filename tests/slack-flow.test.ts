@@ -6,13 +6,15 @@ import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "@/lib/db/client";
 import { account, comments, shipments, tickets, user, verifications } from "@/lib/db/schema";
-import { dispatch } from "@/lib/shipments/effects";
+import { CommandError, requestReverification, unverify, type Actor } from "@/lib/shipments/commands";
+import { dispatch, execute } from "@/lib/shipments/effects";
 import { ACTIONS, MENTIONS_BLOCK, MODALS, FIELDS, REQUESTER_BLOCK } from "@/lib/slack/blocks";
 import { handleInteraction, type InteractionPayload } from "@/lib/slack/interactions";
 import {
   notifyComment,
   notifyLeadsUnclaimed,
   publishShipment,
+  requestReverification as requestReverificationJob,
   runAutoPublish,
   sendReminder,
   syncRecipientDm,
@@ -308,5 +310,65 @@ describe.skipIf(!hasDb)("timers and leads", () => {
     await notifyLeadsUnclaimed({ shipmentId: s.id });
     await notifyLeadsUnclaimed({ shipmentId: s.id });
     expect(slackApi.sent.map((m) => m.to)).toEqual(["U_LEAD"]);
+  });
+});
+
+describe.skipIf(!hasDb)("unverify and reverification (D41)", () => {
+  const as = (userId: string, role: "dev" | "lead" = "dev"): Actor => ({ kind: "user", userId, role });
+
+  // Published; u-other and u-lead reported a problem, u-dev verified.
+  async function seedReported() {
+    const s = await seed();
+    await db().update(shipments).set({ status: "published", publishedVia: "confirmed", verificationStatus: "issue_reported" }).where(eq(shipments.id, s.id));
+    await db().insert(verifications).values([
+      { shipmentId: s.id, userId: "u-other", kind: "issue_reported" },
+      { shipmentId: s.id, userId: "u-lead", kind: "issue_reported" },
+      { shipmentId: s.id, userId: "u-dev", kind: "verified" },
+    ]);
+    return s;
+  }
+
+  it("unverify removes only the actor's row and recomputes the status", async () => {
+    const s = await seedReported();
+    await execute((tx) => unverify(tx, { actor: as("u-other"), shipmentId: s.id }));
+    expect((await shipment(s.id)).verificationStatus).toBe("issue_reported");
+    await execute((tx) => unverify(tx, { actor: as("u-lead", "lead"), shipmentId: s.id }));
+    expect((await shipment(s.id)).verificationStatus).toBe("verified");
+    expect((await db().select().from(verifications)).map((v) => v.userId)).toEqual(["u-dev"]);
+    expect((await shipment(s.id)).timeline.at(-1)).toMatchObject({ event: "unverified", data: { by: "u-lead", previous: "issue_reported" } });
+    expect(jobNames()).toEqual(["sync-requester-dm", "sync-requester-dm"]);
+
+    expect(await execute((tx) => unverify(tx, { actor: as("u-lead", "lead"), shipmentId: s.id }))).toMatchObject({ kind: "noop" });
+  });
+
+  it("requestReverification: recipient or lead only, while issue_reported, once an hour", async () => {
+    const s = await seedReported();
+    await expect(execute((tx) => requestReverification(tx, { actor: as("u-other"), shipmentId: s.id }))).rejects.toBeInstanceOf(CommandError);
+
+    const step = await execute((tx) => requestReverification(tx, { actor: as("u-dev"), shipmentId: s.id }));
+    expect(step).toMatchObject({ kind: "reverification_requested", shipmentId: s.id });
+    const [comment] = await db().select().from(comments);
+    expect(comment).toMatchObject({ authorUserId: "u-dev", source: "web", body: "Pediu nova verificação a quem relatou problema." });
+    expect((await shipment(s.id)).lastReverifyRequestedAt).toBeInstanceOf(Date);
+    expect(queue.jobs).toEqual([{ name: "request-reverification", data: { shipmentId: s.id }, options: {} }]);
+
+    // Within the hour: nothing more, even for a lead.
+    expect(await execute((tx) => requestReverification(tx, { actor: as("u-lead", "lead"), shipmentId: s.id }))).toMatchObject({ kind: "noop" });
+    expect(await db().select().from(comments)).toHaveLength(1);
+    expect(queue.jobs).toHaveLength(1);
+  });
+
+  it("requestReverification is a noop when nobody reported a problem", async () => {
+    const s = await seed();
+    await db().update(shipments).set({ status: "published", publishedVia: "confirmed", verificationStatus: "verified" }).where(eq(shipments.id, s.id));
+    expect(await execute((tx) => requestReverification(tx, { actor: as("u-dev"), shipmentId: s.id }))).toMatchObject({ kind: "noop" });
+    expect(queue.jobs).toEqual([]);
+  });
+
+  it("the job DMs exactly the reporters", async () => {
+    const s = await seedReported();
+    await requestReverificationJob({ shipmentId: s.id });
+    expect(slackApi.sent.map((m) => m.kind + ":" + m.to).sort()).toEqual(["dm:U_LEAD", "dm:U_OTHER"]);
+    expect(slackApi.sent[0].text).toBe("Pode conferir de novo #412?");
   });
 });

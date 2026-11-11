@@ -56,6 +56,9 @@ export async function dispatch(tx: Tx, steps: NextStep[]): Promise<void> {
         await enqueue(JOBS.syncRequesterDm, job, {}, tx);
         await enqueue(JOBS.notifyIssueReported, { ...job, commentId: step.commentId }, {}, tx);
         break;
+      case "reverification_requested":
+        await enqueue(JOBS.requestReverification, job, {}, tx);
+        break;
     }
   }
 }
