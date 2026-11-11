@@ -37,6 +37,9 @@ export const MODALS = {
 
 export type ModalId = (typeof MODALS)[keyof typeof MODALS];
 
+/** Block ID prefix of the requester picker in the draft DM. */
+export const REQUESTER_BLOCK = "requester:";
+
 /** Field IDs inside the modals (block_id and action_id). */
 export const FIELDS = { text: "text" } as const;
 
@@ -202,7 +205,8 @@ function draftDm(v: ShipmentView, autoPublishHours: number): SlackMessage {
   if (v.requester.kind === "unresolved") {
     blocks.push({
       type: "section",
-      block_id: "requester",
+      // users_select carries no value, so the block ID carries the shipment.
+      block_id: `${REQUESTER_BLOCK}${v.id}`,
       text: { type: "mrkdwn", text: `Não achei *"${esc(v.requester.raw)}"* no Slack. Quem pediu essa entrega?` },
       accessory: {
         type: "users_select",

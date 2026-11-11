@@ -178,7 +178,11 @@ Nothing goes to Slack yet.
   - Queues everything else as `handle-slack-interaction`, then replies 200.
 - **Action IDs:** the existing ones in `ACTIONS`, plus `shipment.request_reverification`. The reporter's DM reuses
   `shipment.verify` and `shipment.report_issue`.
-- **New job:** `request-reverification`.
+- **Jobs (M3):** `sync-recipient-dm`, `notify-leads-unclaimed`, `send-reminder`, `auto-publish`, `publish-shipment`,
+  `sync-requester-dm`, `notify-issue-reported`, `handle-slack-interaction` (see `src/worker/jobs.ts`). Later:
+  `request-reverification`.
+- **Modals** use callback IDs from `MODALS` (`modal.edit_notes`, `modal.add_comment`, `modal.report_issue`); the
+  requester picker is a `users_select` whose block ID carries the shipment.
 - **Messages update in place.** Every DM and channel card's `channel` + `ts` is saved on the shipment. When the
   state changes (confirmed, verified, held → released), the worker calls `chat.update`, so stale buttons
   disappear.

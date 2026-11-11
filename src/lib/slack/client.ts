@@ -29,7 +29,7 @@ export interface MessageRef {
 /** Where a DM for `slackUserId` actually goes, given the development allowlist. */
 export function dmTarget(
   slackUserId: string,
-  allowlist: string | undefined = env("SLACK_DM_ALLOWLIST"),
+  allowlist: string | undefined,
 ): { userId: string; redirectedFrom: string | null } {
   const allowed = (allowlist ?? "")
     .split(",")
@@ -41,7 +41,7 @@ export function dmTarget(
 
 /** Opens (or reuses) the DM with a user and posts the message. */
 export async function sendDm(slackUserId: string, message: SlackMessage): Promise<MessageRef> {
-  const target = dmTarget(slackUserId);
+  const target = dmTarget(slackUserId, env("SLACK_DM_ALLOWLIST"));
   const blocks: KnownBlock[] = target.redirectedFrom
     ? [
         {

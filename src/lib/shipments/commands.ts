@@ -6,13 +6,14 @@
  * persist the change plus a timeline entry → return the follow-up step. Commands run
  * inside the caller's transaction; the caller queues follow-up jobs after commit.
  *
- * M1 has the commands ingest needs; M2 adds the leads' unclaimed queue (assignRecipient,
- * leadPublish). The rest (confirm, editNotes, verify, …) come in M3/M4.
+ * M1: what ingest needs. M2: the leads' unclaimed queue. M3: everything the Slack messages
+ * trigger (gates, draft, verification). requestReverification and the weight review come later.
  */
 import { and, eq, isNull, sql } from "drizzle-orm";
 import type { db } from "@/lib/db/client";
 import {
   account,
+  comments,
   shipmentMergeRequests,
   shipments,
   tickets,
@@ -292,3 +293,169 @@ export async function leadPublish(tx: Tx, args: { actor: Actor; shipmentId: numb
 }
 
 const actorId = (actor: Actor) => (actor.kind === "user" ? actor.userId : "system");
+
+// ── M3: recipient DM ─────────────────────────────────────────────────
+
+/** "Aguardar o merge": released by the MR Hook once nothing is open (releaseHeld). */
+export async function holdUntilMerged(tx: Tx, args: { actor: Actor; shipmentId: number }): Promise<NextStep> {
+  const shipment = await loadForUpdate(tx, args.shipmentId);
+  authorizeGateAnswer(args.actor, shipment);
+  return apply(tx, shipment, "hold_until_merged", gateCtx(shipment), { by: actorId(args.actor) });
+}
+
+/** "Publicar mesmo assim": skips the open-MR gate and goes to the draft. */
+export async function publishAnyway(tx: Tx, args: { actor: Actor; shipmentId: number }): Promise<NextStep> {
+  const shipment = await loadForUpdate(tx, args.shipmentId);
+  authorizeGateAnswer(args.actor, shipment);
+  return apply(tx, shipment, "publish_anyway", gateCtx(shipment), { by: actorId(args.actor) });
+}
+
+/** "Confirmar e publicar": the notes as they stand become final. */
+export async function confirm(tx: Tx, args: { actor: Actor; shipmentId: number }): Promise<NextStep> {
+  const shipment = await loadForUpdate(tx, args.shipmentId);
+  authorizeGateAnswer(args.actor, shipment);
+  return apply(
+    tx,
+    shipment,
+    "confirm",
+    { ...gateCtx(shipment), notesFinal: shipment.notesFinal ?? shipment.notesDraft },
+    { by: actorId(args.actor) },
+  );
+}
+
+/**
+ * Timer: AUTO_PUBLISH_AFTER_HOURS without an answer (D8). Only for the draft cycle the job was
+ * scheduled for, so a confirm, a re-ship or a reopen in between cancels it.
+ */
+export async function autoPublish(
+  tx: Tx,
+  args: { actor: Actor; shipmentId: number; cycle: string },
+): Promise<NextStep> {
+  if (args.actor.kind !== "system") throw new CommandError("forbidden", "autoPublish is a timer");
+  const shipment = await loadForUpdate(tx, args.shipmentId);
+  if (shipment.pendingSince?.toISOString() !== args.cycle) {
+    return { kind: "noop", reason: `shipment ${shipment.id}: draft cycle ${args.cycle} is over` };
+  }
+  return apply(tx, shipment, "auto_publish", { ...gateCtx(shipment), notesFinal: shipment.notesFinal ?? shipment.notesDraft });
+}
+
+/** "Editar notas": what the dev writes replaces the draft; after publishing it updates the card. */
+export async function editNotes(
+  tx: Tx,
+  args: { actor: Actor; shipmentId: number; notes: string },
+): Promise<NextStep> {
+  const shipment = await loadForUpdate(tx, args.shipmentId);
+  authorizeGateAnswer(args.actor, shipment);
+  const notes = args.notes.trim();
+  await tx
+    .update(shipments)
+    .set({
+      notesFinal: notes || null,
+      timeline: [...shipment.timeline, timelineEntry("notes_edited", { by: actorId(args.actor), previous: shipment.notesFinal ?? shipment.notesDraft })],
+    })
+    .where(eq(shipments.id, shipment.id));
+  return { kind: "refresh", shipmentId: shipment.id };
+}
+
+/** The dev picks the requester when the Solicitante name didn't match one Slack user. */
+export async function pickRequester(
+  tx: Tx,
+  args: { actor: Actor; shipmentId: number; slackUserId: string },
+): Promise<NextStep> {
+  const shipment = await loadForUpdate(tx, args.shipmentId);
+  authorizeGateAnswer(args.actor, shipment);
+  await tx
+    .update(tickets)
+    .set({ requesterSlackId: args.slackUserId, requesterSource: "dev_picked", updatedAt: new Date() })
+    .where(eq(tickets.id, shipment.ticketId));
+  await tx
+    .update(shipments)
+    .set({ timeline: [...shipment.timeline, timelineEntry("requester_picked", { by: actorId(args.actor), slackUserId: args.slackUserId })] })
+    .where(eq(shipments.id, shipment.id));
+  return { kind: "refresh", shipmentId: shipment.id };
+}
+
+/** A comment on the ticket's thread (D13), optionally about this shipment. Anyone signed in. */
+export async function addComment(
+  tx: Tx,
+  args: { actor: Actor; shipmentId: number; body: string; source: "web" | "slack_dm" },
+): Promise<{ step: NextStep; commentId: number }> {
+  if (args.actor.kind !== "user") throw new CommandError("forbidden", "comments come from people");
+  const body = args.body.trim();
+  if (!body) return { step: { kind: "noop", reason: "empty comment" }, commentId: 0 };
+  const shipment = await loadForUpdate(tx, args.shipmentId);
+  const [comment] = await tx
+    .insert(comments)
+    .values({ ticketId: shipment.ticketId, shipmentId: shipment.id, authorUserId: args.actor.userId, body, source: args.source })
+    .returning({ id: comments.id });
+  return { step: { kind: "noop", reason: `comment ${comment.id} added` }, commentId: comment.id };
+}
+
+// ── M3: verification (D12, D41) ──────────────────────────────────────
+
+/** any issue_reported → issue_reported; else any verified → verified; else unverified. */
+async function recomputeVerification(tx: Tx, shipmentId: number) {
+  const rows = await tx.select({ kind: verifications.kind }).from(verifications).where(eq(verifications.shipmentId, shipmentId));
+  const status = rows.some((r) => r.kind === "issue_reported")
+    ? "issue_reported"
+    : rows.some((r) => r.kind === "verified")
+      ? "verified"
+      : "unverified";
+  await tx.update(shipments).set({ verificationStatus: status }).where(eq(shipments.id, shipmentId));
+  return status;
+}
+
+async function setVerification(
+  tx: Tx,
+  shipment: Shipment,
+  userId: string,
+  kind: "verified" | "issue_reported",
+  commentId: number | null,
+): Promise<void> {
+  const [previous] = await tx
+    .select({ kind: verifications.kind })
+    .from(verifications)
+    .where(and(eq(verifications.shipmentId, shipment.id), eq(verifications.userId, userId)));
+  await tx
+    .insert(verifications)
+    .values({ shipmentId: shipment.id, userId, kind, commentId })
+    .onConflictDoUpdate({
+      target: [verifications.shipmentId, verifications.userId],
+      set: { kind, commentId, updatedAt: new Date() },
+    });
+  const status = await recomputeVerification(tx, shipment.id);
+  await tx
+    .update(shipments)
+    .set({
+      timeline: [...shipment.timeline, timelineEntry(kind, { by: userId, previous: previous?.kind ?? null, verificationStatus: status })],
+    })
+    .where(eq(shipments.id, shipment.id));
+}
+
+/** Anyone verifies a published shipment; a reporter can change their own row back (D41). */
+export async function verify(tx: Tx, args: { actor: Actor; shipmentId: number }): Promise<NextStep> {
+  if (args.actor.kind !== "user") throw new CommandError("forbidden", "verification comes from people");
+  const shipment = await loadForUpdate(tx, args.shipmentId);
+  if (shipment.status !== "published") return { kind: "noop", reason: `shipment ${shipment.id} isn't published` };
+  await setVerification(tx, shipment, args.actor.userId, "verified", null);
+  return { kind: "verification_changed", shipmentId: shipment.id };
+}
+
+/** Anyone reports a problem: a thread comment plus their verification row; the dev is DMed. */
+export async function reportIssue(
+  tx: Tx,
+  args: { actor: Actor; shipmentId: number; comment: string; source: "web" | "slack_dm" },
+): Promise<NextStep> {
+  if (args.actor.kind !== "user") throw new CommandError("forbidden", "reports come from people");
+  const shipment = await loadForUpdate(tx, args.shipmentId);
+  if (shipment.status !== "published") return { kind: "noop", reason: `shipment ${shipment.id} isn't published` };
+  const body = args.comment.trim() || "(sem descrição)";
+  const [comment] = await tx
+    .insert(comments)
+    .values({ ticketId: shipment.ticketId, shipmentId: shipment.id, authorUserId: args.actor.userId, body, source: args.source })
+    .returning({ id: comments.id });
+  await setVerification(tx, shipment, args.actor.userId, "issue_reported", comment.id);
+  return { kind: "issue_reported", shipmentId: shipment.id, commentId: comment.id };
+}
+
+const gateCtx = (shipment: Shipment) => ({ branch: shipment.branch, recipientUserId: shipment.recipientUserId });

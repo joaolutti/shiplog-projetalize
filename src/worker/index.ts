@@ -4,8 +4,19 @@
  */
 import { PgBoss } from "pg-boss";
 import { env } from "@/lib/env";
+import type { InteractionPayload } from "@/lib/slack/interactions";
+import { handleInteraction } from "@/lib/slack/interactions";
 import { handleIngestGitlabEvent, type IngestGitlabEventJob } from "./handlers/ingest-gitlab-event";
-import { JOBS } from "./jobs";
+import {
+  notifyIssueReported,
+  notifyLeadsUnclaimed,
+  publishShipment,
+  runAutoPublish,
+  sendReminder,
+  syncRecipientDm,
+  syncRequesterDm,
+} from "./handlers/shipment-messages";
+import { JOBS, type ShipmentJob, type TimerJob } from "./jobs";
 
 async function main() {
   const boss = new PgBoss(env("DATABASE_URL"));
@@ -17,10 +28,26 @@ async function main() {
     await boss.createQueue(name, { retryLimit: 5, retryBackoff: true, retryDelay: 10 });
   }
 
-  await boss.work<IngestGitlabEventJob>(JOBS.ingestGitlabEvent, async (jobs) => {
-    for (const job of jobs) await handleIngestGitlabEvent(job.data);
-  });
-  // TODO(M3): register the Slack DM, reminder and publish handlers.
+  /** Runs a handler for each job in the batch. */
+  const each =
+    <T extends object>(handler: (data: T) => Promise<unknown>) =>
+    async (jobs: Array<{ data: T }>) => {
+      for (const job of jobs) await handler(job.data);
+    };
+
+  await boss.work<IngestGitlabEventJob>(JOBS.ingestGitlabEvent, each(handleIngestGitlabEvent));
+  await boss.work<ShipmentJob>(JOBS.syncRecipientDm, each(syncRecipientDm));
+  await boss.work<ShipmentJob>(JOBS.notifyLeadsUnclaimed, each(notifyLeadsUnclaimed));
+  await boss.work<TimerJob>(JOBS.sendReminder, each(sendReminder));
+  await boss.work<TimerJob>(JOBS.autoPublish, each(runAutoPublish));
+  await boss.work<ShipmentJob>(JOBS.publishShipment, each(publishShipment));
+  await boss.work<ShipmentJob>(JOBS.syncRequesterDm, each(syncRequesterDm));
+  await boss.work<ShipmentJob & { commentId: number }>(JOBS.notifyIssueReported, each(notifyIssueReported));
+  await boss.work<{ payload: InteractionPayload }>(
+    JOBS.handleSlackInteraction,
+    each(({ payload }: { payload: InteractionPayload }) => handleInteraction(payload)),
+  );
+  // TODO: refresh-merge-requests, request-reverification (M4), review-weight (v1.5).
 
   console.log(`[worker] started; queues: ${Object.values(JOBS).join(", ")}`);
 

@@ -274,9 +274,23 @@ The code is provider-agnostic: the AI SDK with an OpenAI-compatible base URL, co
 | `GET /api/health` | Render health check |
 
 ### Background jobs (worker)
-`ingest-gitlab-event` · `send-draft-dm` · `send-reminder` · `auto-publish` · `publish-shipment` ·
-`notify-requester` · `refresh-merge-requests` · `handle-slack-interaction` · `request-reverification` ·
-`review-weight` (v1.5)
+`ingest-gitlab-event` · `sync-recipient-dm` · `notify-leads-unclaimed` · `send-reminder` · `auto-publish` ·
+`publish-shipment` · `sync-requester-dm` · `notify-issue-reported` · `handle-slack-interaction` ·
+`refresh-merge-requests` · `request-reverification` · `review-weight` (v1.5)
+
+### Slack behaviour (M3)
+- **One DM per shipment, updated in place.** The recipient's DM shows the current gate (branch picker, open MRs,
+  waiting for merge, draft) and becomes "publicada" after publishing, so old buttons disappear.
+- **Notes.** The draft comes from `## Notas de entrega` (or the MR title). "Editar notas" replaces it; that text is
+  what gets published, and editing after publishing updates the channel card.
+- **Timers.** The reminder (4 h) and auto-publish (24 h) belong to one draft cycle: a confirm, re-ship or reopen in
+  between cancels them.
+- **Requester.** Matched against the Slack directory when the draft goes out; if there's no single match, the draft
+  DM asks the dev to pick. A requester who has never opened Shiplog can still verify or report from their DM: their
+  account is created on first contact, and Slack sign-in later lands on it.
+- **Development guard.** `SLACK_DM_ALLOWLIST` (development only) redirects DMs for anyone else to the first listed
+  user, marked with who they were for, so real colleagues get nothing while testing against the live workspace.
+  Use a test channel for `SLACK_FEED_CHANNEL_ID` in development.
 
 ### Data model (`src/lib/db/schema.ts`)
 `user / session / account / verification` (Better Auth) · `gitlab_events` · `tickets` · `shipments` ·

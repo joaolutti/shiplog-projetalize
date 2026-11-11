@@ -1,0 +1,719 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Block Kit messages > matches the snapshots 1`] = `
+{
+  "draft": {
+    "blocks": [
+      {
+        "text": {
+          "text": ":package: *Entregando para Staging*
+<https://gitlab.com/acme/billing-svc/-/issues/412|#412 Corrigir login com SSO>",
+          "type": "mrkdwn",
+        },
+        "type": "section",
+      },
+      {
+        "elements": [
+          {
+            "text": "acme/billing-svc · MRs: <https://gitlab.com/acme/billing-svc/-/merge_requests/45|acme/billing-svc!45> (merged) · Solicitante: <@U0REQUESTER>",
+            "type": "mrkdwn",
+          },
+        ],
+        "type": "context",
+      },
+      {
+        "text": {
+          "text": "*Notas da entrega*
+> Corrige o login com SSO para clientes enterprise.
+> O botão "Entrar" volta a funcionar no Safari.",
+          "type": "mrkdwn",
+        },
+        "type": "section",
+      },
+      {
+        "block_id": "draft",
+        "elements": [
+          {
+            "action_id": "shipment.confirm_publish",
+            "style": "primary",
+            "text": {
+              "emoji": true,
+              "text": "Confirmar e publicar",
+              "type": "plain_text",
+            },
+            "type": "button",
+            "value": "7",
+          },
+          {
+            "action_id": "shipment.edit_notes",
+            "text": {
+              "emoji": true,
+              "text": "Editar notas",
+              "type": "plain_text",
+            },
+            "type": "button",
+            "value": "7",
+          },
+          {
+            "action_id": "shipment.add_comment",
+            "text": {
+              "emoji": true,
+              "text": "Comentar",
+              "type": "plain_text",
+            },
+            "type": "button",
+            "value": "7",
+          },
+        ],
+        "type": "actions",
+      },
+      {
+        "elements": [
+          {
+            "text": "Sem resposta, publico em 24 h com as notas como estão.",
+            "type": "mrkdwn",
+          },
+        ],
+        "type": "context",
+      },
+    ],
+    "text": "Rascunho da entrega de #412 para Staging",
+  },
+  "draftUnresolvedRequester": {
+    "blocks": [
+      {
+        "text": {
+          "text": ":package: *Entregando para Staging*
+<https://gitlab.com/acme/billing-svc/-/issues/412|#412 Corrigir login com SSO>",
+          "type": "mrkdwn",
+        },
+        "type": "section",
+      },
+      {
+        "elements": [
+          {
+            "text": "acme/billing-svc · MRs: <https://gitlab.com/acme/billing-svc/-/merge_requests/45|acme/billing-svc!45> (merged) · Solicitante: "Ana Ribeiro" (não encontrado no Slack)",
+            "type": "mrkdwn",
+          },
+        ],
+        "type": "context",
+      },
+      {
+        "text": {
+          "text": "*Notas da entrega*
+> Corrige o login com SSO para clientes enterprise.
+> O botão "Entrar" volta a funcionar no Safari.",
+          "type": "mrkdwn",
+        },
+        "type": "section",
+      },
+      {
+        "accessory": {
+          "action_id": "shipment.pick_requester",
+          "placeholder": {
+            "text": "Escolher pessoa",
+            "type": "plain_text",
+          },
+          "type": "users_select",
+        },
+        "block_id": "requester:7",
+        "text": {
+          "text": "Não achei *"Ana Ribeiro"* no Slack. Quem pediu essa entrega?",
+          "type": "mrkdwn",
+        },
+        "type": "section",
+      },
+      {
+        "block_id": "draft",
+        "elements": [
+          {
+            "action_id": "shipment.confirm_publish",
+            "style": "primary",
+            "text": {
+              "emoji": true,
+              "text": "Confirmar e publicar",
+              "type": "plain_text",
+            },
+            "type": "button",
+            "value": "7",
+          },
+          {
+            "action_id": "shipment.edit_notes",
+            "text": {
+              "emoji": true,
+              "text": "Editar notas",
+              "type": "plain_text",
+            },
+            "type": "button",
+            "value": "7",
+          },
+          {
+            "action_id": "shipment.add_comment",
+            "text": {
+              "emoji": true,
+              "text": "Comentar",
+              "type": "plain_text",
+            },
+            "type": "button",
+            "value": "7",
+          },
+        ],
+        "type": "actions",
+      },
+      {
+        "elements": [
+          {
+            "text": "Sem resposta, publico em 24 h com as notas como estão.",
+            "type": "mrkdwn",
+          },
+        ],
+        "type": "context",
+      },
+    ],
+    "text": "Rascunho da entrega de #412 para Staging",
+  },
+  "draftWeightMismatch": {
+    "blocks": [
+      {
+        "text": {
+          "text": ":package: *Entregando para Staging*
+<https://gitlab.com/acme/billing-svc/-/issues/412|#412 Corrigir login com SSO>",
+          "type": "mrkdwn",
+        },
+        "type": "section",
+      },
+      {
+        "elements": [
+          {
+            "text": "acme/billing-svc · MRs: <https://gitlab.com/acme/billing-svc/-/merge_requests/45|acme/billing-svc!45> (merged) · Solicitante: <@U0REQUESTER>",
+            "type": "mrkdwn",
+          },
+        ],
+        "type": "context",
+      },
+      {
+        "text": {
+          "text": "*Notas da entrega*
+> Corrige o login com SSO para clientes enterprise.
+> O botão "Entrar" volta a funcionar no Safari.",
+          "type": "mrkdwn",
+        },
+        "type": "section",
+      },
+      {
+        "elements": [
+          {
+            "text": ":scales: O peso no GitLab é 5, mas o rótulo diz 3. Vale o campo de peso.",
+            "type": "mrkdwn",
+          },
+        ],
+        "type": "context",
+      },
+      {
+        "block_id": "draft",
+        "elements": [
+          {
+            "action_id": "shipment.confirm_publish",
+            "style": "primary",
+            "text": {
+              "emoji": true,
+              "text": "Confirmar e publicar",
+              "type": "plain_text",
+            },
+            "type": "button",
+            "value": "7",
+          },
+          {
+            "action_id": "shipment.edit_notes",
+            "text": {
+              "emoji": true,
+              "text": "Editar notas",
+              "type": "plain_text",
+            },
+            "type": "button",
+            "value": "7",
+          },
+          {
+            "action_id": "shipment.add_comment",
+            "text": {
+              "emoji": true,
+              "text": "Comentar",
+              "type": "plain_text",
+            },
+            "type": "button",
+            "value": "7",
+          },
+        ],
+        "type": "actions",
+      },
+      {
+        "elements": [
+          {
+            "text": "Sem resposta, publico em 24 h com as notas como estão.",
+            "type": "mrkdwn",
+          },
+        ],
+        "type": "context",
+      },
+    ],
+    "text": "Rascunho da entrega de #412 para Staging",
+  },
+  "feedCard": {
+    "blocks": [
+      {
+        "text": {
+          "text": ":ship: *Entregue em Staging*
+<https://gitlab.com/acme/billing-svc/-/issues/412|#412 Corrigir login com SSO> (<@U0REQUESTER>)",
+          "type": "mrkdwn",
+        },
+        "type": "section",
+      },
+      {
+        "text": {
+          "text": "> Corrige o login com SSO para clientes enterprise.
+> O botão "Entrar" volta a funcionar no Safari.",
+          "type": "mrkdwn",
+        },
+        "type": "section",
+      },
+      {
+        "block_id": "feed",
+        "elements": [
+          {
+            "action_id": "shipment.open_link",
+            "text": {
+              "emoji": true,
+              "text": "Abrir no Shiplog",
+              "type": "plain_text",
+            },
+            "type": "button",
+            "url": "https://shiplog.example.com/tickets/3",
+          },
+        ],
+        "type": "actions",
+      },
+    ],
+    "text": "Entregue em Staging: #412 Corrigir login com SSO",
+  },
+  "feedCardAuto": {
+    "blocks": [
+      {
+        "text": {
+          "text": ":ship: *Entregue em Staging*
+<https://gitlab.com/acme/billing-svc/-/issues/412|#412 Corrigir login com SSO>",
+          "type": "mrkdwn",
+        },
+        "type": "section",
+      },
+      {
+        "text": {
+          "text": "> Corrige o login com SSO para clientes enterprise.
+> O botão "Entrar" volta a funcionar no Safari.",
+          "type": "mrkdwn",
+        },
+        "type": "section",
+      },
+      {
+        "elements": [
+          {
+            "text": ":warning: Notas não confirmadas pelo dev.",
+            "type": "mrkdwn",
+          },
+        ],
+        "type": "context",
+      },
+      {
+        "block_id": "feed",
+        "elements": [
+          {
+            "action_id": "shipment.open_link",
+            "text": {
+              "emoji": true,
+              "text": "Abrir no Shiplog",
+              "type": "plain_text",
+            },
+            "type": "button",
+            "url": "https://shiplog.example.com/tickets/3",
+          },
+        ],
+        "type": "actions",
+      },
+    ],
+    "text": "Entregue em Staging: #412 Corrigir login com SSO",
+  },
+  "held": {
+    "blocks": [
+      {
+        "text": {
+          "text": ":hourglass: <https://gitlab.com/acme/billing-svc/-/issues/412|#412 Corrigir login com SSO> → *Staging*: aguardando o merge dos MRs abertos. O rascunho chega aqui logo depois.",
+          "type": "mrkdwn",
+        },
+        "type": "section",
+      },
+      {
+        "elements": [
+          {
+            "text": "acme/billing-svc · MRs: <https://gitlab.com/acme/billing-svc/-/merge_requests/45|acme/billing-svc!45> (merged) · Solicitante: <@U0REQUESTER>",
+            "type": "mrkdwn",
+          },
+        ],
+        "type": "context",
+      },
+    ],
+    "text": "Aguardando o merge de #412",
+  },
+  "leadsUnclaimed": {
+    "blocks": [
+      {
+        "text": {
+          "text": ":raised_hand: *Entrega sem responsável*: <https://gitlab.com/acme/billing-svc/-/issues/412|#412 Corrigir login com SSO> → *Main*
+Era para o usuário 11 do GitLab, que ainda não conectou o Shiplog.",
+          "type": "mrkdwn",
+        },
+        "type": "section",
+      },
+      {
+        "elements": [
+          {
+            "text": "acme/billing-svc · MRs: <https://gitlab.com/acme/billing-svc/-/merge_requests/45|acme/billing-svc!45> (merged) · Solicitante: <@U0REQUESTER>",
+            "type": "mrkdwn",
+          },
+        ],
+        "type": "context",
+      },
+      {
+        "block_id": "unclaimed",
+        "elements": [
+          {
+            "action_id": "shipment.open_link",
+            "text": {
+              "emoji": true,
+              "text": "Abrir a fila",
+              "type": "plain_text",
+            },
+            "type": "button",
+            "url": "https://shiplog.example.com/unclaimed",
+          },
+        ],
+        "type": "actions",
+      },
+    ],
+    "text": "Entrega sem responsável: #412",
+  },
+  "needsBranch": {
+    "blocks": [
+      {
+        "text": {
+          "text": ":compass: <https://gitlab.com/acme/billing-svc/-/issues/412|#412 Corrigir login com SSO> foi marcada como pronta, mas não tem o rótulo \`Branch:\`.
+*Para qual branch foi a entrega?*",
+          "type": "mrkdwn",
+        },
+        "type": "section",
+      },
+      {
+        "elements": [
+          {
+            "text": "acme/billing-svc · MRs: <https://gitlab.com/acme/billing-svc/-/merge_requests/45|acme/billing-svc!45> (merged) · Solicitante: <@U0REQUESTER>",
+            "type": "mrkdwn",
+          },
+        ],
+        "type": "context",
+      },
+      {
+        "block_id": "branch",
+        "elements": [
+          {
+            "action_id": "shipment.pick_branch",
+            "text": {
+              "emoji": true,
+              "text": "Main",
+              "type": "plain_text",
+            },
+            "type": "button",
+            "value": "{"shipmentId":7,"branch":"Main"}",
+          },
+          {
+            "action_id": "shipment.pick_branch",
+            "text": {
+              "emoji": true,
+              "text": "Staging",
+              "type": "plain_text",
+            },
+            "type": "button",
+            "value": "{"shipmentId":7,"branch":"Staging"}",
+          },
+        ],
+        "type": "actions",
+      },
+    ],
+    "text": "Para qual branch foi #412?",
+  },
+  "openMrs": {
+    "blocks": [
+      {
+        "text": {
+          "text": ":hourglass_flowing_sand: <https://gitlab.com/acme/billing-svc/-/issues/412|#412 Corrigir login com SSO> → *Staging* foi marcada como pronta, mas ainda tem MRs abertos: <https://gitlab.com/acme/app/-/merge_requests/46|acme/app!46>.",
+          "type": "mrkdwn",
+        },
+        "type": "section",
+      },
+      {
+        "elements": [
+          {
+            "text": "acme/billing-svc · MRs: <https://gitlab.com/acme/billing-svc/-/merge_requests/45|acme/billing-svc!45> (merged), <https://gitlab.com/acme/app/-/merge_requests/46|acme/app!46> (opened) · Solicitante: <@U0REQUESTER>",
+            "type": "mrkdwn",
+          },
+        ],
+        "type": "context",
+      },
+      {
+        "block_id": "hold",
+        "elements": [
+          {
+            "action_id": "shipment.hold_until_merged",
+            "style": "primary",
+            "text": {
+              "emoji": true,
+              "text": "Aguardar o merge",
+              "type": "plain_text",
+            },
+            "type": "button",
+            "value": "7",
+          },
+          {
+            "action_id": "shipment.publish_anyway",
+            "text": {
+              "emoji": true,
+              "text": "Publicar mesmo assim",
+              "type": "plain_text",
+            },
+            "type": "button",
+            "value": "7",
+          },
+        ],
+        "type": "actions",
+      },
+    ],
+    "text": "#412 ainda tem MRs abertos",
+  },
+  "published": {
+    "blocks": [
+      {
+        "text": {
+          "text": ":white_check_mark: <https://gitlab.com/acme/billing-svc/-/issues/412|#412 Corrigir login com SSO> → *Staging*: publicada.",
+          "type": "mrkdwn",
+        },
+        "type": "section",
+      },
+      {
+        "text": {
+          "text": "*Notas da entrega*
+> Corrige o login com SSO para clientes enterprise.
+> O botão "Entrar" volta a funcionar no Safari.",
+          "type": "mrkdwn",
+        },
+        "type": "section",
+      },
+      {
+        "block_id": "published",
+        "elements": [
+          {
+            "action_id": "shipment.open_link",
+            "text": {
+              "emoji": true,
+              "text": "Abrir no Shiplog",
+              "type": "plain_text",
+            },
+            "type": "button",
+            "url": "https://shiplog.example.com/tickets/3",
+          },
+        ],
+        "type": "actions",
+      },
+    ],
+    "text": "#412 publicada em Staging",
+  },
+  "reminder": {
+    "blocks": [
+      {
+        "text": {
+          "text": ":bell: Lembrete: o rascunho de <https://gitlab.com/acme/billing-svc/-/issues/412|#412 Corrigir login com SSO> ainda aguarda confirmação. Sem resposta, publico em ~20 h com as notas como estão.",
+          "type": "mrkdwn",
+        },
+        "type": "section",
+      },
+    ],
+    "text": "Lembrete: #412 ainda aguarda confirmação",
+  },
+  "requester": {
+    "blocks": [
+      {
+        "text": {
+          "text": ":tada: *O que você pediu foi entregue em Staging*
+<https://gitlab.com/acme/billing-svc/-/issues/412|#412 Corrigir login com SSO>",
+          "type": "mrkdwn",
+        },
+        "type": "section",
+      },
+      {
+        "text": {
+          "text": "> Corrige o login com SSO para clientes enterprise.
+> O botão "Entrar" volta a funcionar no Safari.",
+          "type": "mrkdwn",
+        },
+        "type": "section",
+      },
+      {
+        "elements": [
+          {
+            "text": "Confere se ficou como esperado?",
+            "type": "mrkdwn",
+          },
+        ],
+        "type": "context",
+      },
+      {
+        "block_id": "requester",
+        "elements": [
+          {
+            "action_id": "shipment.verify",
+            "style": "primary",
+            "text": {
+              "emoji": true,
+              "text": "Verificar",
+              "type": "plain_text",
+            },
+            "type": "button",
+            "value": "7",
+          },
+          {
+            "action_id": "shipment.report_issue",
+            "text": {
+              "emoji": true,
+              "text": "Reportar problema",
+              "type": "plain_text",
+            },
+            "type": "button",
+            "value": "7",
+          },
+          {
+            "action_id": "shipment.open_link",
+            "text": {
+              "emoji": true,
+              "text": "Abrir no Shiplog",
+              "type": "plain_text",
+            },
+            "type": "button",
+            "url": "https://shiplog.example.com/tickets/3",
+          },
+        ],
+        "type": "actions",
+      },
+    ],
+    "text": "Entregue em Staging: #412 Corrigir login com SSO",
+  },
+  "requesterReported": {
+    "blocks": [
+      {
+        "text": {
+          "text": ":tada: *O que você pediu foi entregue em Staging*
+<https://gitlab.com/acme/billing-svc/-/issues/412|#412 Corrigir login com SSO>",
+          "type": "mrkdwn",
+        },
+        "type": "section",
+      },
+      {
+        "text": {
+          "text": "> Corrige o login com SSO para clientes enterprise.
+> O botão "Entrar" volta a funcionar no Safari.",
+          "type": "mrkdwn",
+        },
+        "type": "section",
+      },
+      {
+        "elements": [
+          {
+            "text": ":warning: Você reportou um problema; o dev foi avisado.",
+            "type": "mrkdwn",
+          },
+        ],
+        "type": "context",
+      },
+      {
+        "block_id": "requester",
+        "elements": [
+          {
+            "action_id": "shipment.verify",
+            "style": "primary",
+            "text": {
+              "emoji": true,
+              "text": "Agora está ok",
+              "type": "plain_text",
+            },
+            "type": "button",
+            "value": "7",
+          },
+          {
+            "action_id": "shipment.open_link",
+            "text": {
+              "emoji": true,
+              "text": "Abrir no Shiplog",
+              "type": "plain_text",
+            },
+            "type": "button",
+            "url": "https://shiplog.example.com/tickets/3",
+          },
+        ],
+        "type": "actions",
+      },
+    ],
+    "text": "Entregue em Staging: #412 Corrigir login com SSO",
+  },
+  "requesterVerified": {
+    "blocks": [
+      {
+        "text": {
+          "text": ":tada: *O que você pediu foi entregue em Staging*
+<https://gitlab.com/acme/billing-svc/-/issues/412|#412 Corrigir login com SSO>",
+          "type": "mrkdwn",
+        },
+        "type": "section",
+      },
+      {
+        "text": {
+          "text": "> Corrige o login com SSO para clientes enterprise.
+> O botão "Entrar" volta a funcionar no Safari.",
+          "type": "mrkdwn",
+        },
+        "type": "section",
+      },
+      {
+        "elements": [
+          {
+            "text": ":white_check_mark: Você verificou. Obrigado!",
+            "type": "mrkdwn",
+          },
+        ],
+        "type": "context",
+      },
+      {
+        "block_id": "requester",
+        "elements": [
+          {
+            "action_id": "shipment.open_link",
+            "text": {
+              "emoji": true,
+              "text": "Abrir no Shiplog",
+              "type": "plain_text",
+            },
+            "type": "button",
+            "url": "https://shiplog.example.com/tickets/3",
+          },
+        ],
+        "type": "actions",
+      },
+    ],
+    "text": "Entregue em Staging: #412 Corrigir login com SSO",
+  },
+}
+`;

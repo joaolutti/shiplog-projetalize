@@ -105,6 +105,12 @@ Then start `bun run worker` and the web app with `GITLAB_BASE_URL=http://localho
 `X-Gitlab-Token`, `X-Gitlab-Event` and `X-Gitlab-Event-UUID` headers. The worker logs each `NextStep`;
 `bun run scripts/replay-event.ts <id>` re-runs one event.
 
+### Slack messages
+
+`/dev/slack-preview` (development only) shows every Slack message from fixtures, with a link to open each in
+Slack's Block Kit Builder. While developing against the real workspace, set `SLACK_DM_ALLOWLIST` to your own
+Slack user ID and `SLACK_FEED_CHANNEL_ID` to a test channel.
+
 ### Real webhooks
 
 To receive GitLab webhooks and Slack interactions locally, expose port 3000 with a

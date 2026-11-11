@@ -41,6 +41,8 @@ const schema = z.object({
 
   REMINDER_AFTER_HOURS: z.coerce.number().positive().default(4),
   AUTO_PUBLISH_AFTER_HOURS: z.coerce.number().positive().default(24),
+  /** Branch buttons in the "which branch?" DM. */
+  BRANCH_CHOICES: z.string().default("Main,Staging"),
 
   LLM_ENABLED: z.stringbool().default(false),
   LLM_PROVIDER_NAME: z.string().default("openrouter"),
