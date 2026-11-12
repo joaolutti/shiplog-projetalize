@@ -1,47 +1,49 @@
 @import "tailwindcss";
 
 /*
- * Shiplog's design system, ported from the prototype (docs/ARCHITECTURE.md §7): dark theme only,
- * a fixed sidebar and a "bento" main area of rounded tiles. Purple (roxo) for active and primary,
- * orange (laranja) for alerts. Tokens are Tailwind theme variables; components are plain classes.
+ * Shiplog's design system, from the prototype's layout (docs/ARCHITECTURE.md §7): light theme, to
+ * match the company's other apps. A fixed sidebar and a "bento" main area of rounded white tiles.
+ * Purple (roxo) for active and primary, orange (laranja) for alerts. Tokens are Tailwind theme
+ * variables; components are plain classes.
  */
 @theme {
-  --color-bg: #050506;
-  --color-surface: #0c0c0e;
-  --color-raised: #141417;
-  --color-hover: #1a1a1e;
-  --color-line: #222227;
-  --color-line-strong: #33333a;
-  --color-tile: #101013;
-  --color-tile-hi: #16161a;
-  --color-text: #ededef;
-  --color-muted: #8b8b94;
-  --color-faint: #5b5b64;
-  --color-ink: #f4f4f5;
-  --color-ink-text: #0a0a0b;
+  --color-bg: #f5f5f8;
+  --color-surface: #ffffff;
+  --color-raised: #ececf1;
+  --color-hover: #ececf1;
+  --color-line: #e6e6eb;
+  --color-line-strong: #d4d4dc;
+  --color-tile: #ffffff;
+  --color-tile-hi: #f6f6f9;
+  --color-text: #17171c;
+  --color-muted: #5f5f6b;
+  --color-faint: #85858f;
+  --color-ink: #17171c;
+  --color-ink-text: #ffffff;
   --color-roxo: #7136ff;
-  --color-roxo-text: #a88bff;
+  --color-roxo-text: #5b25e0;
   --color-laranja: #ff6633;
-  --color-laranja-text: #ffa585;
-  --color-ok: #3fc466;
-  --color-ok-text: #6fdc8f;
-  --color-warn: #e9a32a;
-  --color-del: #ff7b72;
+  --color-laranja-text: #c2410c;
+  --color-ok: #22a755;
+  --color-ok-text: #15803d;
+  --color-warn: #d18a0f;
+  --color-del: #d4352b;
   --font-sans: var(--font-geist-sans), "Inter", system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, Menlo, monospace;
 }
 
 :root {
-  --edge: rgba(255, 255, 255, 0.06);
-  --roxo-soft: rgba(113, 54, 255, 0.14);
-  --roxo-line: rgba(113, 54, 255, 0.45);
-  --laranja-soft: rgba(255, 102, 51, 0.12);
-  --ok-soft: rgba(63, 196, 102, 0.12);
-  --g0: #141417;
-  --g1: #2a1a5e;
-  --g2: #4a26b0;
+  --edge: rgba(23, 23, 28, 0.08);
+  --shadow: 0 1px 2px rgba(23, 23, 28, 0.04), 0 1px 1px rgba(23, 23, 28, 0.02);
+  --roxo-soft: rgba(113, 54, 255, 0.09);
+  --roxo-line: rgba(113, 54, 255, 0.35);
+  --laranja-soft: rgba(255, 102, 51, 0.1);
+  --ok-soft: rgba(34, 167, 85, 0.1);
+  --g0: #ececf1;
+  --g1: #d8ccff;
+  --g2: #a98bff;
   --g3: #7136ff;
-  --g4: #b49bff;
+  --g4: #4a1fc2;
   --r: 8px;
   --r-md: 14px;
   --r-xl: 24px;
@@ -50,7 +52,7 @@
   --pad: 28px;
   --gap: 14px;
   --top: 64px;
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 * {
@@ -439,7 +441,7 @@ h3 {
   white-space: nowrap;
 }
 .cta:hover {
-  background: #fff;
+  background: #2b2b33;
 }
 .cta .count {
   background: var(--color-ink-text);
@@ -465,6 +467,7 @@ main.view {
   background: var(--color-tile);
   border: 1px solid var(--edge);
   border-radius: var(--r-xl);
+  box-shadow: var(--shadow);
   min-width: 0;
 }
 .pad {
@@ -549,7 +552,7 @@ main.view {
   color: var(--color-muted);
 }
 .stat.hot {
-  background: linear-gradient(160deg, rgba(255, 102, 51, 0.1), transparent 55%), var(--color-tile);
+  background: linear-gradient(160deg, rgba(255, 102, 51, 0.08), transparent 55%), var(--color-tile);
 }
 .stat .k {
   font-size: 12px;
@@ -568,7 +571,7 @@ main.view {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  background: radial-gradient(120% 90% at 100% 0%, rgba(113, 54, 255, 0.22), transparent 60%), var(--color-tile);
+  background: radial-gradient(120% 90% at 100% 0%, rgba(113, 54, 255, 0.1), transparent 60%), var(--color-tile);
 }
 .hero .v {
   font-size: 96px;
@@ -933,7 +936,7 @@ table.tbl {
   border-bottom: 0;
 }
 .tbl tr:hover td {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(23, 23, 28, 0.02);
 }
 .tbl .n,
 .mr .n {
@@ -1325,6 +1328,7 @@ table.mr {
   flex-direction: column;
   min-width: 0;
   overflow: hidden;
+  box-shadow: var(--shadow);
 }
 .ac-h {
   display: flex;
@@ -1569,6 +1573,7 @@ table.mr {
   background: var(--color-tile);
   border-radius: var(--r-xl);
   overflow: hidden;
+  box-shadow: var(--shadow);
 }
 .box-h {
   display: flex;
@@ -1755,6 +1760,7 @@ textarea:focus,
   background: var(--color-tile);
   border-radius: var(--r-xl);
   overflow: hidden;
+  box-shadow: var(--shadow);
 }
 .uc {
   display: grid;
@@ -1878,7 +1884,7 @@ textarea:focus,
     display: block;
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(23, 23, 28, 0.35);
     z-index: 15;
   }
   main.view {
@@ -1960,7 +1966,7 @@ textarea:focus,
   display: grid;
   place-items: center;
   padding: 24px 16px;
-  background: radial-gradient(90% 70% at 70% 10%, rgba(113, 54, 255, 0.18), transparent 60%), var(--color-bg);
+  background: radial-gradient(90% 70% at 70% 10%, rgba(113, 54, 255, 0.1), transparent 60%), var(--color-bg);
 }
 .signin-card {
   width: min(100%, 880px);
@@ -1972,6 +1978,7 @@ textarea:focus,
   border: 1px solid var(--edge);
   border-radius: var(--r-xl);
   padding: 40px;
+  box-shadow: var(--shadow);
 }
 .signin-card img {
   width: 100%;

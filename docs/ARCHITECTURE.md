@@ -237,7 +237,7 @@ each mirrors a web component (draft ↔ ShipmentCard, requester DM ↔ VerifyBut
 ### Styling
 
 - The prototype's CSS tokens become Tailwind 4 `@theme` variables in `src/app/globals.css`.
-- Dark theme only, as in the prototype.
+- Light theme, to match the company's other apps (the prototype was dark; its layout and accents are kept).
 - Fonts: Geist and Geist Mono via `next/font`. Icons: Material Symbols.
 - **Patch**, the pirate mascot (`public/patch-*.svg|png`), is the logo: sidebar mark, favicon (`src/app/icon.png`,
   `apple-icon.png`) and the sign-in page. Prefer him over the old hexagon mark everywhere.
