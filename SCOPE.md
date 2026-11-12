@@ -51,7 +51,7 @@ The process works, but:
 |---|---|---|---|
 | `member` | Anyone in the Slack workspace | — | Browse the feed, comment, verify, report a problem |
 | `dev` | Development team | 7 | Everything a member can, plus receive draft DMs, confirm/edit drafts, see **all** weight opinions |
-| `lead` | PM + CTO | 2 | Everything a dev can, plus flag weight reviews, handle unclaimed drafts, manage roles |
+| `lead` | PM + CTO | 2 | Everything a dev can, plus flag weight reviews and manage roles |
 
 **Onboarding cost:**
 - **Members:** "Sign in with Slack". That's all.
@@ -72,7 +72,7 @@ GitLab: "Development: Done" label added, or Status moved to Done / Deployed Main
    │          upsert shipment, unique on (ticket, branch)
    │          gates run in this order (D40):
    │
-   ├── 1. recipient unlinked? → status "unclaimed": DM leads + "Unclaimed" queue in web app
+   ├── 0. nobody linked?      → not tracked: Shiplog only works with people who connected GitLab (D45)
    │                            (leads then answer the remaining gates)
    ├── 2. no Branch label?    → DM nudge: "Which branch?" [Main] [Staging] …
    ├── 3. open MRs remain?    → DM nudge: "!45 in billing-svc is still open"
@@ -115,8 +115,8 @@ GitLab: "Development: Done" label added, or Status moved to Done / Deployed Main
 
 ### Shipment states (D40, full table in `docs/ARCHITECTURE.md` §3)
 ```
-status:        unclaimed → needs_branch → awaiting_hold_decision → held → pending_confirmation → published
-               (each gate is skipped when it doesn't apply; a lead can publish an unclaimed shipment directly)
+status:        needs_branch → awaiting_hold_decision → held → pending_confirmation → published
+               (each gate is skipped when it doesn't apply)
 published_via: confirmed | auto | lead
 verification:  unverified | verified | issue_reported      (independent of status)
 ```
@@ -167,7 +167,8 @@ GitLab.com webhooks and the API usually **redact emails**, so accounts can't be 
 - **Membership check.** Uses the server's GitLab token. A project token (development) can't list group members, so
   `GITLAB_MEMBERSHIP_PROJECT` names a project to check instead; production uses the group token and leaves it unset.
 - **Requesters** never need GitLab: they're resolved from the issue template's `Solicitante:` name through Slack.
-- **Unlinked GitLab user** → the shipment becomes `unclaimed`, the leads get a DM, and it appears in the web app queue.
+- **Unlinked GitLab user** → if none of the candidates (assignee → MR author → label applier) has connected GitLab, the
+  shipment isn't tracked at all (D45).
 
 ## 7. Weight second opinion (v1.5)
 
@@ -273,7 +274,7 @@ The code is provider-agnostic: the AI SDK with an OpenAI-compatible base URL, co
 | `GET /api/health` | Render health check |
 
 ### Background jobs (worker)
-`ingest-gitlab-event` · `sync-recipient-dm` · `notify-leads-unclaimed` · `send-reminder` · `auto-publish` ·
+`ingest-gitlab-event` · `sync-recipient-dm` · `send-reminder` · `auto-publish` ·
 `publish-shipment` · `sync-requester-dm` · `notify-issue-reported` · `handle-slack-interaction` ·
 `refresh-merge-requests` · `request-reverification` · `review-weight` (v1.5)
 
@@ -314,7 +315,7 @@ The code is provider-agnostic: the AI SDK with an OpenAI-compatible base URL, co
 |---|---|---|
 | M0 | Scaffold + scope | ✅ This repo |
 | M1 | **Ingest**: webhook receiver, event store, label parsing, ticket/shipment upsert, related MRs, nudge decisions | Applying `Development: Done` on a test issue creates the right shipment (logged, no Slack yet). ✅ Locally with `scripts/fake-gitlab.ts`; a run against a real test project waits on a GitLab token + webhook |
-| M2 | **Identity**: Slack sign-in, GitLab connect, roles, unclaimed queue | ✅ The owner's account signed in with Slack and linked to GitLab. The rest of the team links when the app goes live (v1) |
+| M2 | **Identity**: Slack sign-in, GitLab connect, roles | ✅ The owner's account signed in with Slack and linked to GitLab. The rest of the team links when the app goes live (v1) |
 | M3 | **Slack DM flow**: draft DM, edit modal, hold-until-merged, reminder, auto-publish, channel card, requester DM | A full ship happens without anyone typing a message |
 | M4 | **Web app**: feed + filters (date, branch, label, dev, requester, verification), ticket page, thread, verify/report, DM notifications | The team stops using the channel for discussion |
 | M5 (v1.5) | **Weight review**: data policy, redaction, audit log, eval harness → model choice, weight + notes in DM | Eval run reviewed by the leads, model chosen, rollout |
@@ -335,7 +336,7 @@ The code is provider-agnostic: the AI SDK with an OpenAI-compatible base URL, co
 - [ ] Production needs a **group** access token (D29). A project token only sees its own project, so related MRs in
       other repos come back empty: on `p1429/predialize` every sampled Done issue showed 0 related MRs.
 - [x] ~~Visão geral: M4 or v2?~~ M4, as the home page (`/`); Entregas moved to `/feed`.
-- [ ] Confirm (implemented this way in M1): the recipient is the *first linked* candidate in D4 order; `unclaimed` only when none is linked.
+- [x] ~~First linked candidate~~: confirmed, and with nobody linked the shipment isn't tracked (D45).
 - [ ] Confirm (implemented this way in M1): an MR closed without merging no longer blocks the hold gate.
 - [ ] Confirm (implemented this way in M1): a re-ship (reopen → Done again, same branch) reuses the same shipment row with a new draft cycle.
 - [ ] Confirm (implemented this way in M1): a shipment still waiting on the hold question moves on to the draft once no related MR is open.
@@ -355,8 +356,11 @@ Numbered to continue the decision log in `HANDOFF.md` §3. Where they differ, th
 | D37 | **The interface and Slack messages are pt-BR only.** GitLab label names, branch names and terms like MR/issue stay as they are |
 | D38 | The activity grid shows **team totals by day only** (applies D24) |
 | D39 | **A single command layer** (`src/lib/shipments/commands.ts`) is shared by server actions and Slack handlers. State only changes there |
-| D40 | Gate order: **recipient → branch → open MRs → draft**. Statuses: `unclaimed`, `needs_branch`, `awaiting_hold_decision`, `held`, `pending_confirmation`, `published`. `branch` is nullable, with partial unique indexes |
+| D40 | Gate order: **branch → open MRs → draft** (a linked recipient is a precondition, D45). Statuses: `needs_branch`, `awaiting_hold_decision`, `held`, `pending_confirmation`, `published`. `branch` is nullable, with partial unique indexes |
 | D41 | **The reporter can change their verification** from issue to verified. **"Pedir nova verificação"** DMs every reporter (dev or lead, at most once per hour per shipment) |
 | D42 | All dates and day buckets use `America/Sao_Paulo` |
 | D44 | **The ship trigger is the `Development: Done` label or a trigger work item Status** (`Done`, `Deployed Main`, `Deployed Staging`; configurable with `STATUS_TRIGGERS`). Replaces D2's label-only trigger: the board's Deployed columns are Status lists, which don't change labels, and Shiplog never writes to GitLab. `Deployed <branch>` implies the branch |
+| D45 | **Only people who connected GitLab.** The recipient is the first candidate in D4 order with GitLab linked; if none is, the shipment isn't created. Replaces D10 (unclaimed queue, leads' DM, "publicar como líder") and the recipient gate of D40 |
+| D46 | **GitLab labels aren't shown in the interface.** They're internal tracking; the branch (Main / Staging) is the only one surfaced, as a tag. Search still matches them |
+| D47 | **Clicking a shipment opens a side panel** (`?s=<shipment>`) with what shipped, verification and the ticket's discussion; "Ver detalhes" opens the ticket page |
 | D43 | **Bun** is the package manager, script runner and worker runtime. **Next.js runs on Node 22.** Code under `src/` uses no Bun-only APIs. Replaces "npm + tsx" |

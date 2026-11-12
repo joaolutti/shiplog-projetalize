@@ -26,7 +26,6 @@ src/
     page.tsx                 shipped feed                         (M4)
     tickets/[id]/page.tsx    ticket page: shipments, verify, thread (M4)
     settings/page.tsx        Connect GitLab, roles                (M2)
-    unclaimed/page.tsx       leads' queue for unlinked recipients (M2)
     api/webhooks/gitlab/     GitLab group webhook                 (M1)
     api/slack/interactions/  Slack buttons & modals               (M3)
     api/auth/[...all]/       Better Auth (Slack + GitLab)         (M2)

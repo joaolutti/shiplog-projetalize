@@ -5,16 +5,17 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { ActivityHeatmap, DayBars, Ring } from "@/components/charts";
+import { ShipmentDrawer } from "@/components/shipment-drawer";
 import { ShipmentTable } from "@/components/shipments";
 import { Chip, Empty, Icon, plural } from "@/components/ui";
 import { requireViewer } from "@/lib/auth/viewer";
 import { overview } from "@/lib/shipments/queries";
 
-export default function OverviewPage() {
+export default function OverviewPage({ searchParams }: PageProps<"/">) {
   return (
     <main className="view">
       <Suspense fallback={<p className="muted">Carregando…</p>}>
-        <Overview />
+        <Overview searchParams={searchParams} />
       </Suspense>
     </main>
   );
@@ -33,9 +34,10 @@ function Tile(props: { icon: string; label: string; value: number; chip?: React.
   );
 }
 
-async function Overview() {
+async function Overview({ searchParams }: Pick<PageProps<"/">, "searchParams">) {
   const viewer = await requireViewer();
-  const o = await overview(viewer);
+  const [o, sp] = await Promise.all([overview(viewer), searchParams]);
+  const open = Number(Array.isArray(sp.s) ? sp.s[0] : sp.s);
   const w = o.week;
   const head = w.issues ? "Atenção" : w.waiting ? "Em andamento" : "Em dia";
   const line =
@@ -174,8 +176,9 @@ async function Overview() {
             Ver todas
           </Link>
         </div>
-        <ShipmentTable items={o.recent} />
+        <ShipmentTable items={o.recent} href={(id) => `/?s=${id}`} />
       </section>
+      {Number.isInteger(open) && open > 0 && <ShipmentDrawer viewer={viewer} shipmentId={open} closeHref="/" />}
     </div>
   );
 }

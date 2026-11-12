@@ -53,8 +53,8 @@ src/lib/db                                      schema + client  (scaffold)
 
 Every user or system action is one function in `commands.ts`:
 
-`confirm` · `editNotes` · `addComment` · `holdUntilMerged` · `publishAnyway` · `pickBranch` · `assignRecipient` ·
-`leadPublish` · `autoPublish` · `releaseHeld` · `verify` · `reportIssue` · `requestReverification` ·
+`confirm` · `editNotes` · `addComment` · `holdUntilMerged` · `publishAnyway` · `pickBranch` · `pickRequester` ·
+`setMentions` · `autoPublish` · `releaseHeld` · `verify` · `reportIssue` · `requestReverification` ·
 `respondWeight` · `flagReview`
 
 Each command runs the same five steps:
@@ -78,22 +78,18 @@ the site are the same code path.
 
 When a ticket is marked Done, the gates run in this order:
 
-1. **Recipient** (D4 order: assignee → MR author → user who applied the label).
-2. **Branch.**
-3. **Open MRs.**
-4. **Draft.**
+1. **Branch.**
+2. **Open MRs.**
+3. **Draft.**
 
-The recipient goes first because the branch and hold nudges are DMs, so someone has to receive them. If no
-recipient is linked, the shipment becomes `unclaimed` and the leads answer the remaining gates.
-
-**(proposed)** The recipient is the *first linked* candidate in D4 order. The shipment is `unclaimed` only when
-none of them has linked GitLab.
+The recipient is a precondition rather than a gate (D45): it's the first candidate in D4 order (assignee → MR author
+→ label applier) who has connected GitLab. If none has, the shipment isn't created. The remaining gates run in order:
+branch, then open MRs, then the draft.
 
 ### Statuses
 
 | Status | Meaning | Leaves via |
 |---|---|---|
-| `unclaimed` | No linked recipient. Leads are DMed and the shipment shows in `/unclaimed` | `assignRecipient` → next gate · `leadPublish` → `published` |
 | `needs_branch` | Done applied with no `Branch:` label. `branch` is NULL | `pickBranch` → next gate |
 | `awaiting_hold_decision` | Related MRs still open. The recipient has the [Aguardar o merge] / [Publicar mesmo assim] DM | `holdUntilMerged` → `held` · `publishAnyway` → `pending_confirmation` |
 | `held` | Waiting for the last related MR to merge | `releaseHeld` (MR Hook) → `pending_confirmation` |
@@ -130,7 +126,7 @@ none of them has linked GitLab.
 | 3 | `lib/gitlab/labels.ts` | Pure: `parseLabels`, `doneLabelAdded` (`changes.labels.previous` vs `current`), `branchesAdded` |
 | 4 | `lib/gitlab/client.ts` | GET only: the issue (always refetched, never trusting the payload alone), `related_merge_requests`, MR stats |
 | 5 | `lib/gitlab/templates.ts` (new) | Pure: read `Solicitante:` from the issue description and `## Notas de entrega` from MR descriptions |
-| 6 | `lib/shipments/recipient.ts` | D4 order → linked Shiplog user, or `unclaimed` |
+| 6 | `lib/shipments/recipient.ts` | D4 order → first linked Shiplog user; none → no shipment (D45) |
 | 7 | `lib/shipments/ingest.ts` | Upsert the ticket, upsert the shipment(s), run the gates, return `NextStep[]` (`send-draft-dm`, `nudge-branch`, …) |
 
 How events turn into shipments:
@@ -178,7 +174,7 @@ Nothing goes to Slack yet.
   - Queues everything else as `handle-slack-interaction`, then replies 200.
 - **Action IDs:** the existing ones in `ACTIONS`, plus `shipment.request_reverification`. The reporter's DM reuses
   `shipment.verify` and `shipment.report_issue`.
-- **Jobs (M3):** `sync-recipient-dm`, `notify-leads-unclaimed`, `send-reminder`, `auto-publish`, `publish-shipment`,
+- **Jobs (M3):** `sync-recipient-dm`, `send-reminder`, `auto-publish`, `publish-shipment`,
   `sync-requester-dm`, `notify-issue-reported`, `handle-slack-interaction` (see `src/worker/jobs.ts`). Later:
   `request-reverification`.
 - **Modals** use callback IDs from `MODALS` (`modal.edit_notes`, `modal.add_comment`, `modal.report_issue`); the
@@ -201,8 +197,8 @@ The scaffold's URLs are kept in English. All interface text is pt-BR.
 |---|---|---|
 | `/` | Visão geral: this week's team totals, verification, "Precisa de atenção", team activity by day, recent shipments (D38) | M4 |
 | `/feed` | Entregas. Filters (period, branch, dev, requester, verification, search) live in `searchParams`; cards or list | M4 |
+| `?s=<shipment>` on `/` and `/feed` | Side panel (D47): what shipped, verification, the ticket's discussion; "Ver detalhes" → ticket page | M4 |
 | `/tickets/[id]` | Ticket: shipments, Staging→Main track, MR stats, thread, verify/report/re-verify, weight panel (dev/lead) | M4 |
-| `/unclaimed` | Leads' queue | M2 |
 | `/settings` | Slack/GitLab connections, roles (leads edit), "o que o Shiplog nunca faz" | M2 |
 | `/dev/slack-preview` | Renders the Block Kit builders with fixtures. **Development only** (404 in production) | M3 |
 
@@ -227,7 +223,7 @@ Signed-in pages live in the `(app)` route group, whose layout is the sidebar + t
 | Folder | Components |
 |---|---|
 | `ui/` | AppShell, Sidebar, NavItem, TopBar, Tile, Button, Chip, StatusDot, BranchTag, LabelTag, Flag, Avatar, AvatarStack, SegmentedControl, Search, Select, Toast, Tooltip, EmptyState |
-| `shipment/` | ShipmentCard, ShipmentTable, VerificationBadge, VerifyButton, ReportForm, RequestReverifyButton, MRTable, BranchTrack, CommentThread, CommentComposer, HistoryList, AttentionList, UnclaimedRow, WeightPanel (renders nothing for `member`; the data is already filtered by the query) |
+| `shipment/` | ShipmentCard, ShipmentTable, VerificationBadge, VerifyButton, ReportForm, RequestReverifyButton, MRTable, BranchTrack, CommentThread, CommentComposer, HistoryList, AttentionList, ShipmentDrawer, WeightPanel (renders nothing for `member`; the data is already filtered by the query) |
 | `charts/` | StatTile, HeroCount + DayBars, VerificationRing, ActivityHeatmap (team total by day, **never by person**) |
 | `settings/` | ConnectionCard, RoleEditor, NeverRules |
 
@@ -250,7 +246,7 @@ each mirrors a web component (draft ↔ ShipmentCard, requester DM ↔ VerifyBut
 | Table | Change |
 |---|---|
 | `tickets` | Replace the requester email column with `requester_raw` (text as typed, nullable), `requester_slack_id` (nullable) and `requester_source` (`template` · `dev_picked` · `none`) |
-| `shipments` | `branch` **nullable**. Partial unique indexes on `(ticket_id, branch) WHERE branch IS NOT NULL` and `(ticket_id) WHERE branch IS NULL`. `status` enum = the six statuses in §3. `recipient_user_id` nullable (unclaimed). `last_reverify_requested_at` |
+| `shipments` | `branch` **nullable**. Partial unique indexes on `(ticket_id, branch) WHERE branch IS NOT NULL` and `(ticket_id) WHERE branch IS NULL`. `status` enum = the six statuses in §3. `recipient_user_id` nullable (legacy; always set since D45). `last_reverify_requested_at` |
 | `verifications` | `kind` can change. Add `updated_at`. Changes are recorded in `shipments.timeline` |
 | worker | New queue `request-reverification` in `JOBS` |
 

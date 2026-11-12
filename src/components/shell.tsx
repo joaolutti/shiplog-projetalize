@@ -122,7 +122,6 @@ export function NavList({ items, active = () => false }: { items: NavItem[]; act
 const PAGES: Record<string, [string, string]> = {
   "/": ["Visão geral", "Como o time está entregando, em tempo real."],
   "/feed": ["Entregas", "Tudo o que foi entregue. Qualquer pessoa pode verificar."],
-  "/unclaimed": ["Sem responsável", "Rascunhos que ainda não chegaram a um dev."],
   "/settings": ["Sua conta", "Conexões e o que o Shiplog nunca faz."],
   "/dev/slack-preview": ["Prévia do Slack", "As mensagens que o Shiplog envia por DM e no canal."],
 };

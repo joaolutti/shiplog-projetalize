@@ -4,6 +4,7 @@
  */
 import { Suspense } from "react";
 import { FeedFilters, ViewToggle } from "@/components/feed-filters";
+import { ShipmentDrawer } from "@/components/shipment-drawer";
 import { ShipmentCard, ShipmentTable } from "@/components/shipments";
 import { Empty } from "@/components/ui";
 import { requireViewer } from "@/lib/auth/viewer";
@@ -39,6 +40,12 @@ async function Feed({ searchParams }: Pick<PageProps<"/feed">, "searchParams">) 
   const [items, options] = await Promise.all([listFeed(viewer, filters), feedOptions()]);
   const list = one(sp.view) === "list";
 
+  // The side panel is ?s=<shipment>, on top of the current filters.
+  const base = new URLSearchParams(Object.entries(sp).flatMap(([k, v]) => (k === "s" || v === undefined ? [] : [[k, String(one(v))]])));
+  const panelHref = (shipmentId: number) => `/feed?${new URLSearchParams([...base, ["s", String(shipmentId)]])}`;
+  const closeHref = `/feed${base.size ? `?${base}` : ""}`;
+  const open = Number(one(sp.s));
+
   return (
     <>
       <section className="band">
@@ -58,16 +65,17 @@ async function Feed({ searchParams }: Pick<PageProps<"/feed">, "searchParams">) 
           <Empty>Nenhuma entrega com esses filtros.</Empty>
         ) : list ? (
           <div className="t flush">
-            <ShipmentTable items={items} actions />
+            <ShipmentTable items={items} actions href={panelHref} />
           </div>
         ) : (
           <div className="cards">
             {items.map((item) => (
-              <ShipmentCard key={item.shipmentId} item={item} />
+              <ShipmentCard key={item.shipmentId} item={item} href={panelHref} />
             ))}
           </div>
         )}
       </section>
+      {Number.isInteger(open) && open > 0 && <ShipmentDrawer viewer={viewer} shipmentId={open} closeHref={closeHref} />}
     </>
   );
 }

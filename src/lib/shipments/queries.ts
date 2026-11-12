@@ -18,42 +18,6 @@ import {
 import type { Viewer } from "@/lib/auth/viewer";
 import { addDays, ago, dayKey, startOfDayAgo } from "@/lib/dates";
 
-export interface UnclaimedShipment {
-  id: number;
-  branch: string | null;
-  createdAt: Date;
-  // GitLab user the shipment was meant for (assignee → MR author → label applier).
-  intendedGitlabId: number | null;
-  notes: string | null;
-  ticket: { id: number; iid: number; title: string; webUrl: string; projectPath: string };
-}
-
-// Leads only; empty for anyone else. Oldest first.
-export async function listUnclaimed(viewer: Viewer): Promise<UnclaimedShipment[]> {
-  if (viewer.role !== "lead") return [];
-  const rows = await db()
-    .select({
-      id: shipments.id,
-      branch: shipments.branch,
-      createdAt: shipments.createdAt,
-      intendedGitlabId: shipments.recipientGitlabId,
-      notes: shipments.notesDraft,
-      ticketId: tickets.id,
-      iid: tickets.iid,
-      title: tickets.title,
-      webUrl: tickets.webUrl,
-      projectPath: tickets.projectPath,
-    })
-    .from(shipments)
-    .innerJoin(tickets, eq(tickets.id, shipments.ticketId))
-    .where(eq(shipments.status, "unclaimed"))
-    .orderBy(asc(shipments.createdAt));
-  return rows.map(({ ticketId, iid, title, webUrl, projectPath, ...s }) => ({
-    ...s,
-    ticket: { id: ticketId, iid, title, webUrl, projectPath },
-  }));
-}
-
 export interface TeamMember {
   id: string;
   name: string;
@@ -85,11 +49,6 @@ export async function listTeam(viewer: Viewer): Promise<TeamMember[]> {
   return users.map((u) => ({ ...u, gitlabId: gitlabByUser.get(u.id) ?? null }));
 }
 
-// Who a lead can assign an unclaimed shipment to: devs and leads with GitLab linked.
-export async function listAssignable(viewer: Viewer): Promise<TeamMember[]> {
-  return (await listTeam(viewer)).filter((m) => m.role !== "member" && m.gitlabId !== null);
-}
-
 // ── Shared ───────────────────────────────────────────────────────────
 
 export type VerificationStatus = "unverified" | "verified" | "issue_reported";
@@ -111,23 +70,17 @@ async function namesBySlackId(slackIds: string[]): Promise<Map<string, string>> 
 // ── Shell ────────────────────────────────────────────────────────────
 
 export interface ShellSummary {
-  unclaimed: number;
   weekVerified: number;
   weekTotal: number;
 }
 
-// Sidebar counters: this week's verification meter, and the unclaimed queue for leads.
-export async function shellSummary(viewer: Viewer): Promise<ShellSummary> {
+// Sidebar counter: this week's verification meter.
+export async function shellSummary(): Promise<ShellSummary> {
   const week = await db()
     .select({ status: shipments.verificationStatus })
     .from(shipments)
     .where(and(eq(shipments.status, "published"), gte(shipments.publishedAt, startOfDayAgo(6))));
-  const [unclaimed] =
-    viewer.role === "lead"
-      ? await db().select({ n: sql<number>`count(*)::int` }).from(shipments).where(eq(shipments.status, "unclaimed"))
-      : [{ n: 0 }];
   return {
-    unclaimed: unclaimed.n,
     weekVerified: week.filter((w) => w.status === "verified").length,
     weekTotal: week.length,
   };
@@ -155,11 +108,10 @@ export interface FeedItem {
   title: string;
   projectPath: string;
   webUrl: string;
-  labels: string[];
   branch: string | null;
   notes: string | null;
   publishedAt: Date;
-  publishedVia: "confirmed" | "auto" | "lead" | null;
+  publishedVia: "confirmed" | "auto" | null;
   verification: VerificationStatus;
   mrCount: number;
   repoCount: number;
@@ -243,7 +195,6 @@ async function hydrateFeed(
       title: t.title,
       projectPath: t.projectPath,
       webUrl: t.webUrl,
-      labels: t.labels,
       branch: s.branch,
       notes: s.notesFinal ?? s.notesDraft,
       publishedAt: s.publishedAt ?? s.updatedAt,
@@ -407,14 +358,14 @@ export async function overview(viewer: Viewer): Promise<Overview> {
     },
     last7,
     drafts,
-    attention: await attention(viewer, now),
+    attention: await attention(now),
     activity,
     recent: await listFeed(viewer, { limit: 6 }),
   };
 }
 
 // What needs someone: problems, unconfirmed notes, blocked and waiting drafts.
-async function attention(viewer: Viewer, now: Date): Promise<AttentionItem[]> {
+async function attention(now: Date): Promise<AttentionItem[]> {
   const rows = await db()
     .select({
       id: shipments.id,
@@ -423,7 +374,6 @@ async function attention(viewer: Viewer, now: Date): Promise<AttentionItem[]> {
       verification: shipments.verificationStatus,
       at: shipments.updatedAt,
       publishedAt: shipments.publishedAt,
-      intendedGitlabId: shipments.recipientGitlabId,
       ticketId: tickets.id,
       iid: tickets.iid,
       title: tickets.title,
@@ -434,7 +384,7 @@ async function attention(viewer: Viewer, now: Date): Promise<AttentionItem[]> {
     .leftJoin(user, eq(user.id, shipments.recipientUserId))
     .where(
       or(
-        inArray(shipments.status, [...IN_PROGRESS, "unclaimed"]),
+        inArray(shipments.status, [...IN_PROGRESS]),
         and(eq(shipments.status, "published"), ne(shipments.verificationStatus, "verified"), gte(shipments.publishedAt, startOfDayAgo(13, now))),
       ),
     )
@@ -443,7 +393,7 @@ async function attention(viewer: Viewer, now: Date): Promise<AttentionItem[]> {
 
   const items: AttentionItem[] = [];
   for (const r of rows) {
-    const who = r.devName ?? (r.intendedGitlabId ? `usuário ${r.intendedGitlabId} do GitLab` : "sem responsável");
+    const who = r.devName ?? "—";
     const base = { sub: `#${r.iid} ${r.title} · ${who} · ${ago(r.at, now)}`, href: `/tickets/${r.ticketId}`, at: r.at };
     if (r.status === "published" && r.verification === "issue_reported") {
       items.push({ ...base, severity: 0, icon: "report", title: "Problema relatado", chip: { tone: "issue", label: "Problema" } });
@@ -453,9 +403,6 @@ async function attention(viewer: Viewer, now: Date): Promise<AttentionItem[]> {
       items.push({ ...base, severity: 1, icon: "merge", title: "MR relacionado ainda aberto", chip: { tone: "warn", label: "Bloqueado" } });
     } else if (r.status === "needs_branch") {
       items.push({ ...base, severity: 1, icon: "call_split", title: "Falta a label de branch", chip: { tone: "warn", label: "Bloqueado" } });
-    } else if (r.status === "unclaimed") {
-      const href = viewer.role === "lead" ? "/unclaimed" : base.href;
-      items.push({ ...base, href, severity: 1, icon: "person_off", title: "Rascunho sem responsável", chip: { tone: "roxo", label: "Líderes" } });
     } else if (r.status === "pending_confirmation") {
       items.push({ ...base, severity: 3, icon: "edit_note", title: "Rascunho aguardando confirmação", chip: { tone: "roxo", label: "Pendente" } });
     }
@@ -471,7 +418,7 @@ export interface TicketShipment {
   status: (typeof shipments.$inferSelect)["status"];
   notes: string | null;
   publishedAt: Date | null;
-  publishedVia: "confirmed" | "auto" | "lead" | null;
+  publishedVia: "confirmed" | "auto" | null;
   verification: VerificationStatus;
   devName: string | null;
   mergeRequests: Array<{
@@ -509,8 +456,6 @@ export interface TicketDetail {
   title: string;
   projectPath: string;
   webUrl: string;
-  labels: string[];
-  gitlabStatus: string | null;
   assignees: string[];
   requesterName: string | null;
   hubspotUrls: string[];
@@ -584,8 +529,6 @@ export async function ticketDetail(viewer: Viewer, ticketId: number): Promise<Ti
     title: t.title,
     projectPath: t.projectPath,
     webUrl: t.webUrl,
-    labels: t.labels,
-    gitlabStatus: t.gitlabStatus,
     assignees: t.assigneeGitlabIds.map(
       (id) => assigneeRows.find((a) => a.gitlabId === String(id))?.name ?? `Usuário ${id} do GitLab`,
     ),
@@ -635,4 +578,10 @@ export async function ticketDetail(viewer: Viewer, ticketId: number): Promise<Ti
     })),
     weightReviews: reviews.map((r) => ({ ...r, branch: branchOf.get(r.shipmentId) ?? null })),
   };
+}
+
+// The ticket a shipment belongs to (the side panel opens by shipment).
+export async function ticketIdOfShipment(shipmentId: number): Promise<number | null> {
+  const [row] = await db().select({ ticketId: shipments.ticketId }).from(shipments).where(eq(shipments.id, shipmentId));
+  return row?.ticketId ?? null;
 }

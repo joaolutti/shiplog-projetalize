@@ -5,10 +5,6 @@ import { shortDate } from "@/lib/dates";
 import type { FeedItem } from "@/lib/shipments/queries";
 import { Avatar, BranchTag, Empty, Icon, VerificationBadge, ViaFlag } from "./ui";
 
-// Labels shown as tags: Done/Branch labels are already the card's status and branch.
-const tagLabels = (labels: string[]) => labels.filter((l) => !/^(development|branch):/i.test(l));
-// Real issues carry many labels; the card shows a few and the rest on hover.
-const MAX_TAGS = 4;
 
 // The viewer's verify control for a published shipment.
 export function VerifyControl({ item, variant = "text" }: { item: Pick<FeedItem, "shipmentId" | "ticketId" | "mine">; variant?: "text" | "button" }) {
@@ -41,7 +37,10 @@ export function VerifyControl({ item, variant = "text" }: { item: Pick<FeedItem,
   );
 }
 
-export function ShipmentCard({ item }: { item: FeedItem }) {
+// Where a card or row leads: the side panel for that shipment, on the current page.
+export type PanelHref = (shipmentId: number) => string;
+
+export function ShipmentCard({ item, href }: { item: FeedItem; href: PanelHref }) {
   const main = item.branch?.toLowerCase() === "main";
   return (
     <article className="ac">
@@ -53,7 +52,9 @@ export function ShipmentCard({ item }: { item: FeedItem }) {
           <span className="iid">
             #{item.iid} · {item.projectPath}
           </span>
-          <Link href={`/tickets/${item.ticketId}`}>{item.title}</Link>
+          <Link className="stretch" href={href(item.shipmentId)} scroll={false}>
+            {item.title}
+          </Link>
           <div className="row" style={{ gap: 10 }}>
             <VerificationBadge status={item.verification} small />
             {item.verifiers.length > 0 && (
@@ -92,21 +93,11 @@ export function ShipmentCard({ item }: { item: FeedItem }) {
           </div>
         </div>
       </div>
-      <div className="ac-tags">
-        {tagLabels(item.labels)
-          .slice(0, MAX_TAGS)
-          .map((l) => (
-            <span className="label" key={l}>
-              {l}
-            </span>
-          ))}
-        {tagLabels(item.labels).length > MAX_TAGS && (
-          <span className="label" title={tagLabels(item.labels).slice(MAX_TAGS).join(", ")}>
-            +{tagLabels(item.labels).length - MAX_TAGS}
-          </span>
-        )}
-        <ViaFlag via={item.publishedVia} />
-      </div>
+      {item.publishedVia === "auto" && (
+        <div className="ac-tags">
+          <ViaFlag via={item.publishedVia} />
+        </div>
+      )}
       <div className="ac-f">
         <span className="when">
           <Icon name="schedule" />
@@ -114,7 +105,7 @@ export function ShipmentCard({ item }: { item: FeedItem }) {
         </span>
         <span className="row" style={{ gap: 4 }}>
           {!item.mine && (
-            <Link className="btn text dim" href={`/tickets/${item.ticketId}#relatar-${item.shipmentId}`}>
+            <Link className="btn text dim" href={href(item.shipmentId)} scroll={false}>
               Relatar
             </Link>
           )}
@@ -125,7 +116,7 @@ export function ShipmentCard({ item }: { item: FeedItem }) {
   );
 }
 
-export function ShipmentTable({ items, actions }: { items: FeedItem[]; actions?: boolean }) {
+export function ShipmentTable({ items, actions, href }: { items: FeedItem[]; actions?: boolean; href: PanelHref }) {
   if (items.length === 0) return <Empty>Nenhuma entrega com esses filtros.</Empty>;
   const max = Math.max(1, ...items.map((i) => i.lines ?? 0));
   return (
@@ -151,7 +142,7 @@ export function ShipmentTable({ items, actions }: { items: FeedItem[]; actions?:
               <td>
                 <div className="iss">
                   <span className="iid">#{item.iid}</span>
-                  <Link href={`/tickets/${item.ticketId}`} title={item.title}>
+                  <Link href={href(item.shipmentId)} scroll={false} title={item.title}>
                     {item.title}
                   </Link>
                 </div>
@@ -176,7 +167,7 @@ export function ShipmentTable({ items, actions }: { items: FeedItem[]; actions?:
                 {actions ? (
                   <VerifyControl item={item} variant="button" />
                 ) : (
-                  <Link className="go" href={`/tickets/${item.ticketId}`} aria-label={`Abrir #${item.iid}`}>
+                  <Link className="go" href={href(item.shipmentId)} scroll={false} aria-label={`Abrir #${item.iid}`}>
                     <Icon name="arrow_outward" />
                   </Link>
                 )}

@@ -53,21 +53,15 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
   );
 }
 
-async function Nav() {
-  const viewer = await getViewer();
-  if (!viewer) return <NavLinks items={BASE_NAV} />;
-  const summary = await shellSummary(viewer);
-  const items = [...BASE_NAV];
-  if (viewer.role === "lead") {
-    items.splice(2, 0, { href: "/unclaimed", label: "Sem responsável", icon: "person_off", count: summary.unclaimed });
-  }
-  return <NavLinks items={items} />;
+// Highlights the current page; reads the URL, so it streams in behind Suspense.
+function Nav() {
+  return <NavLinks items={BASE_NAV} />;
 }
 
 async function Meter() {
   const viewer = await getViewer();
   if (!viewer) return null;
-  const { weekVerified, weekTotal } = await shellSummary(viewer);
+  const { weekVerified, weekTotal } = await shellSummary();
   const pct = weekTotal ? Math.round((weekVerified / weekTotal) * 100) : 0;
   return (
     <>

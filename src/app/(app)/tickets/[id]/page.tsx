@@ -6,12 +6,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { commentAction, reverifyAction, verifyAction } from "@/app/(app)/actions";
-import { ReportButton } from "@/components/report-form";
-import { VerifyControl } from "@/components/shipments";
-import { Avatar, BranchTag, Empty, Icon, VerificationBadge, ViaFlag } from "@/components/ui";
+import { Discussion, VerificationBlock } from "@/components/ticket-parts";
+import { BranchTag, Empty, Icon, VerificationBadge, ViaFlag } from "@/components/ui";
 import { requireViewer, type Viewer } from "@/lib/auth/viewer";
-import { ago, shortDate, when } from "@/lib/dates";
+import { shortDate, when } from "@/lib/dates";
 import type { TimelineEntry } from "@/lib/db/schema";
 import { ticketDetail, type TicketDetail, type TicketShipment } from "@/lib/shipments/queries";
 
@@ -48,14 +46,6 @@ async function Ticket({ params }: Pick<PageProps<"/tickets/[id]">, "params">) {
               {t.projectPath} · Issue #{t.iid}
             </span>
             <h1>{t.title}</h1>
-            <div className="row">
-              {t.labels.map((l) => (
-                <span className="label" key={l}>
-                  {l}
-                </span>
-              ))}
-              {t.gitlabStatus && <span className="label">Status: {t.gitlabStatus}</span>}
-            </div>
             <dl className="kv">
               <div>
                 <dt>Responsável</dt>
@@ -132,7 +122,6 @@ function Track({ shipments }: { shipments: TicketShipment[] }) {
 }
 
 const STATUS_TEXT: Record<string, string> = {
-  unclaimed: "Sem responsável: aguardando um líder atribuir",
   needs_branch: "Aguardando a escolha da branch",
   awaiting_hold_decision: "Há MRs abertos: aguardando a decisão do dev",
   held: "Aguardando o merge dos MRs abertos",
@@ -162,7 +151,6 @@ function InProgress({ shipment: s }: { shipment: TicketShipment }) {
 }
 
 function ShipmentBox({ shipment: s, viewer }: { shipment: TicketShipment; viewer: Viewer }) {
-  const item = { shipmentId: s.id, ticketId: 0, mine: s.mine };
   return (
     <section className="box" id={`entrega-${s.id}`} aria-labelledby={`h-${s.id}`}>
       <div className="box-h">
@@ -232,161 +220,14 @@ function ShipmentBox({ shipment: s, viewer }: { shipment: TicketShipment; viewer
             </div>
           </div>
         )}
-        <div className="verify" id={`relatar-${s.id}`}>
-          <span className="k">Verificação</span>
-          {s.verifications.length ? (
-            <ul className="vlist">
-              {s.verifications.map((v) => (
-                <li key={v.userId}>
-                  <Icon name={v.kind === "verified" ? "check_circle" : "report"} className={v.kind === "verified" ? "ok" : "warn"} />
-                  <span>
-                    <b style={{ fontWeight: 500 }}>{v.name}</b> {v.kind === "verified" ? "verificou" : "relatou um problema"}{" "}
-                    <span className="muted">{ago(v.at)}</span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="muted" style={{ margin: 0 }}>
-              Ninguém verificou ainda.
-            </p>
-          )}
-          <div className="row">
-            {s.mine === "issue_reported" ? (
-              <>
-                <span className="muted" style={{ fontSize: 13 }}>
-                  Você relatou um problema.
-                </span>
-                <form action={verifyAction}>
-                  <input type="hidden" name="shipmentId" value={s.id} />
-                  <button className="btn neutral sm">
-                    <Icon name="check" />
-                    Agora está ok
-                  </button>
-                </form>
-              </>
-            ) : s.mine === "verified" ? (
-              <VerifyControl item={item} variant="button" />
-            ) : (
-              <>
-                <form action={verifyAction}>
-                  <input type="hidden" name="shipmentId" value={s.id} />
-                  <button className="btn primary sm">
-                    <Icon name="check" />
-                    Verificar
-                  </button>
-                </form>
-                <ReportButton shipmentId={s.id} devName={s.devName} />
-              </>
-            )}
-            {s.canRequestReverify && (
-              <form action={reverifyAction}>
-                <input type="hidden" name="shipmentId" value={s.id} />
-                <button className="btn neutral sm" title="Manda uma DM para quem relatou problema">
-                  <Icon name="refresh" />
-                  Pedir nova verificação
-                </button>
-              </form>
-            )}
-          </div>
-        </div>
+        <VerificationBlock shipment={s} />
       </div>
       <div className="box-f">
         {s.devName && <span>{s.devName}</span>}
         <span>
-          {s.publishedVia === "auto"
-            ? "Publicado automaticamente 24 h após o rascunho"
-            : s.publishedVia === "lead"
-              ? "Publicado por líder"
-              : "Publicado com confirmação do dev"}
+          {s.publishedVia === "auto" ? "Publicado automaticamente 24 h após o rascunho" : "Publicado com confirmação do dev"}
         </span>
         {viewer.role !== "member" && <span>Shiplog #{s.id}</span>}
-      </div>
-    </section>
-  );
-}
-
-const SOURCE: Record<string, [string, string]> = {
-  web: ["language", "Shiplog"],
-  slack_dm: ["chat", "pela DM do Slack"],
-  slack_thread: ["forum", "pelo Slack"],
-};
-
-function Discussion({ ticket: t }: { ticket: TicketDetail }) {
-  const targets = t.shipments.filter((s) => s.status === "published" || s.status === "pending_confirmation");
-  const latest = targets.at(-1) ?? t.shipments.at(-1);
-  return (
-    <section className="box" aria-labelledby="thread-h">
-      <div className="box-h">
-        <h2 id="thread-h">Discussão</h2>
-        <span className="muted" style={{ fontSize: 12 }}>
-          Uma discussão por ticket
-        </span>
-      </div>
-      <div className="box-b">
-        {t.comments.length ? (
-          <ol className="thread">
-            {t.comments.map((c) => {
-              const [icon, label] = SOURCE[c.source] ?? SOURCE.web;
-              return (
-                <li className="cmt" key={c.id}>
-                  <Avatar name={c.authorName} image={c.authorImage} />
-                  <div className="cmt-b">
-                    <div className="cmt-h">
-                      <b>{c.authorName}</b>
-                      {c.branch && t.shipments.length > 1 && <BranchTag branch={c.branch} />}
-                      {c.isReport && (
-                        <span className="flag">
-                          <Icon name="report" />
-                          Relato de problema
-                        </span>
-                      )}
-                      <time dateTime={c.at.toISOString()}>{ago(c.at)}</time>
-                      <span className="src">
-                        <Icon name={icon} />
-                        {label}
-                      </span>
-                    </div>
-                    <p>{c.body}</p>
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
-        ) : (
-          <p className="muted" style={{ margin: 0 }}>
-            Nenhum comentário ainda. Dúvidas sobre este ticket ficam aqui, não em threads do Slack.
-          </p>
-        )}
-        {latest && (
-          <form className="composer" action={commentAction}>
-            <label className="sr" htmlFor="cmt-text">
-              Comentário
-            </label>
-            <textarea id="cmt-text" name="body" rows={2} required maxLength={4000} placeholder="Escreva um comentário" />
-            <div className="row">
-              {targets.length > 1 ? (
-                <>
-                  <label className="sr" htmlFor="cmt-ship">
-                    Sobre
-                  </label>
-                  <select className="sel sm" id="cmt-ship" name="shipmentId" defaultValue={latest.id}>
-                    {targets.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        Entrega em {s.branch ?? "sem branch"}
-                      </option>
-                    ))}
-                  </select>
-                </>
-              ) : (
-                <input type="hidden" name="shipmentId" value={latest.id} />
-              )}
-              <button className="btn primary sm" type="submit" style={{ marginLeft: "auto" }}>
-                Comentar
-              </button>
-            </div>
-          </form>
-        )}
       </div>
     </section>
   );
@@ -438,16 +279,12 @@ function historyLine(e: TimelineEntry, branch: string | null): { icon: string; t
       return { icon: "pause", text: `${b}: aguardando o merge dos MRs` };
     case "release_held":
       return { icon: "merge", text: `${b}: MRs mergeados, rascunho enviado` };
-    case "assign_recipient":
-      return { icon: "person_add", text: `${b}: um líder atribuiu o responsável` };
     case "notes_edited":
       return { icon: "edit", text: `${b}: notas editadas` };
     case "confirm":
       return { icon: "task_alt", text: `${b}: confirmado e publicado` };
     case "auto_publish":
       return { icon: "schedule", text: `${b}: publicado automaticamente após 24 h` };
-    case "lead_publish":
-      return { icon: "verified_user", text: `${b}: publicado por um líder` };
     case "reship":
       return { icon: "replay", text: `${b}: reaberto e entregue de novo` };
     case "issue_reopened":

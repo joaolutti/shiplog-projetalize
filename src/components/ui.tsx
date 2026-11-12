@@ -40,20 +40,12 @@ export function VerificationBadge({ status, small }: { status: VerificationStatu
   );
 }
 
-export function ViaFlag({ via }: { via: "confirmed" | "auto" | "lead" | null }) {
+export function ViaFlag({ via }: { via: "confirmed" | "auto" | null }) {
   if (via === "auto") {
     return (
       <span className="flag" title="Ninguém confirmou as notas do rascunho em 24 horas">
         <Icon name="schedule" />
         Notas não confirmadas
-      </span>
-    );
-  }
-  if (via === "lead") {
-    return (
-      <span className="flag info">
-        <Icon name="verified_user" />
-        Publicado por líder
       </span>
     );
   }
