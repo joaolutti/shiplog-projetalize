@@ -24,9 +24,8 @@ export * from "./auth-schema";
 
 // ── Enums ────────────────────────────────────────────────────────────
 
-// Gates run recipient → branch → open MRs → draft (D40).
+// Gates run branch → open MRs → draft (D40). No shipment exists without a linked recipient.
 export const shipmentStatus = pgEnum("shipment_status", [
-  "unclaimed", // no linked recipient; leads are DMed and answer the remaining gates
   "needs_branch", // Done applied without a Branch label; `branch` is NULL
   "awaiting_hold_decision", // related MRs still open; recipient chooses hold or publish anyway
   "held", // waiting for the last related MR to merge
@@ -37,7 +36,7 @@ export const shipmentStatus = pgEnum("shipment_status", [
 // Where `tickets.requester_slack_id` came from (D16 revised).
 export const requesterSource = pgEnum("requester_source", ["template", "dev_picked", "none"]);
 
-export const publishedVia = pgEnum("published_via", ["confirmed", "auto", "lead"]);
+export const publishedVia = pgEnum("published_via", ["confirmed", "auto"]);
 
 export const verificationStatus = pgEnum("verification_status", [
   "unverified",
@@ -116,7 +115,7 @@ export const shipments = pgTable(
       .references(() => tickets.id, { onDelete: "cascade" }),
     branch: text("branch"), // null while needs_branch
     status: shipmentStatus("status").notNull(),
-    // Dev who receives the draft DM (assignee → MR author → label applier). NULL while unclaimed.
+    // Dev who receives the draft DM: the first of assignee → MR author → label applier with GitLab linked.
     recipientUserId: text("recipient_user_id").references(() => user.id),
     recipientGitlabId: bigint("recipient_gitlab_id", { mode: "number" }),
     notesDraft: text("notes_draft"),
@@ -131,8 +130,6 @@ export const shipments = pgTable(
     // Start of the current draft cycle; the reminder and auto-publish jobs carry it.
     pendingSince: timestamp("pending_since", { withTimezone: true }),
     reminderSentAt: timestamp("reminder_sent_at", { withTimezone: true }),
-    // Leads were DMed about this unclaimed shipment (once per shipment).
-    leadsNotifiedAt: timestamp("leads_notified_at", { withTimezone: true }),
     // Slack users the dev chose to @mention on the channel card.
     mentionSlackIds: jsonb("mention_slack_ids").$type<string[]>().notNull().default([]),
     requesterDmChannelId: text("requester_dm_channel_id"),

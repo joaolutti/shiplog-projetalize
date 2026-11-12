@@ -25,8 +25,8 @@ describe("pickRecipient", () => {
     expect(pickRecipient(candidates, new Map([[33, "u33"]]))).toEqual({ gitlabId: 33, userId: "u33" });
   });
 
-  it("returns userId null (→ unclaimed) with the first candidate when nobody is linked", () => {
-    expect(pickRecipient(candidates, new Map())).toEqual({ gitlabId: 11, userId: null });
+  it("returns null when no candidate is linked", () => {
+    expect(pickRecipient(candidates, new Map())).toBeNull();
   });
 
   it("returns null when there are no candidates at all", () => {

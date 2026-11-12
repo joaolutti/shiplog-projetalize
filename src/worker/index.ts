@@ -10,7 +10,6 @@ import { handleIngestGitlabEvent, type IngestGitlabEventJob } from "./handlers/i
 import {
   notifyComment,
   notifyIssueReported,
-  notifyLeadsUnclaimed,
   publishShipment,
   requestReverification,
   runAutoPublish,
@@ -39,7 +38,6 @@ async function main() {
 
   await boss.work<IngestGitlabEventJob>(JOBS.ingestGitlabEvent, each(handleIngestGitlabEvent));
   await boss.work<ShipmentJob>(JOBS.syncRecipientDm, each(syncRecipientDm));
-  await boss.work<ShipmentJob>(JOBS.notifyLeadsUnclaimed, each(notifyLeadsUnclaimed));
   await boss.work<TimerJob>(JOBS.sendReminder, each(sendReminder));
   await boss.work<TimerJob>(JOBS.autoPublish, each(runAutoPublish));
   await boss.work<ShipmentJob>(JOBS.publishShipment, each(publishShipment));

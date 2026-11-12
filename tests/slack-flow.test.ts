@@ -12,7 +12,6 @@ import { ACTIONS, MENTIONS_BLOCK, MODALS, FIELDS, REQUESTER_BLOCK } from "@/lib/
 import { handleInteraction, type InteractionPayload } from "@/lib/slack/interactions";
 import {
   notifyComment,
-  notifyLeadsUnclaimed,
   publishShipment,
   requestReverification as requestReverificationJob,
   runAutoPublish,
@@ -70,7 +69,7 @@ vi.stubGlobal("fetch", async (_url: string, init: { body: string }) => {
 
 // ── Fixtures ─────────────────────────────────────────────────────────
 
-async function seed(status: "pending_confirmation" | "unclaimed" | "needs_branch" = "pending_confirmation") {
+async function seed(status: "pending_confirmation" | "needs_branch" = "pending_confirmation") {
   await db().insert(user).values([
     { id: "u-dev", name: "Dev", email: "dev@example.com", role: "dev" },
     { id: "u-other", name: "Outro dev", email: "other@example.com", role: "dev" },
@@ -101,7 +100,7 @@ async function seed(status: "pending_confirmation" | "unclaimed" | "needs_branch
       ticketId: t.id,
       branch: status === "needs_branch" ? null : "Staging",
       status,
-      recipientUserId: status === "unclaimed" ? null : "u-dev",
+      recipientUserId: "u-dev",
       recipientGitlabId: 11,
       notesDraft: "Corrige o login.",
       pendingSince: status === "pending_confirmation" ? new Date("2026-11-11T12:00:00Z") : null,
@@ -295,21 +294,6 @@ describe.skipIf(!hasDb)("timers and leads", () => {
     await runAutoPublish({ shipmentId: s.id, cycle });
     expect(await shipment(s.id)).toMatchObject({ status: "published", publishedVia: "auto", notesFinal: "Corrige o login." });
     expect(jobNames()).toEqual(["publish-shipment"]);
-  });
-
-  it("a lead publishing an unclaimed shipment still tags and DMs the requester", async () => {
-    const s = await seed("unclaimed");
-    await db().update(shipments).set({ status: "published", publishedVia: "lead" }).where(eq(shipments.id, s.id));
-    await publishShipment({ shipmentId: s.id });
-    expect(slackApi.sent.map((m) => m.kind + ":" + m.to)).toEqual(["post:C_FEED", "dm:U_ANA"]);
-    expect((await db().select().from(tickets))[0]).toMatchObject({ requesterSlackId: "U_ANA", requesterSource: "template" });
-  });
-
-  it("leads are DMed once about an unclaimed shipment", async () => {
-    const s = await seed("unclaimed");
-    await notifyLeadsUnclaimed({ shipmentId: s.id });
-    await notifyLeadsUnclaimed({ shipmentId: s.id });
-    expect(slackApi.sent.map((m) => m.to)).toEqual(["U_LEAD"]);
   });
 });
 

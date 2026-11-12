@@ -3,7 +3,6 @@ export const JOBS = {
   ingestGitlabEvent: "ingest-gitlab-event",
   // Post or update the recipient's DM to match the shipment's status.
   syncRecipientDm: "sync-recipient-dm",
-  notifyLeadsUnclaimed: "notify-leads-unclaimed",
   sendReminder: "send-reminder",
   autoPublish: "auto-publish",
   // Channel card, then the recipient and requester DMs.

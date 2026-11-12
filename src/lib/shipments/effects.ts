@@ -30,9 +30,6 @@ export async function dispatch(tx: Tx, steps: NextStep[]): Promise<void> {
     const job: ShipmentJob = { shipmentId: step.shipmentId };
 
     switch (step.kind) {
-      case "unclaimed":
-        await enqueue(JOBS.notifyLeadsUnclaimed, job, {}, tx);
-        break;
       case "nudge_missing_branch":
       case "nudge_open_mrs":
       case "held":

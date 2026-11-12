@@ -7,22 +7,21 @@
  * inside the caller's transaction; the caller queues the follow-up jobs in that
  * same transaction (effects.ts `execute` / `dispatch`).
  *
- * M1: what ingest needs. M2: the leads' unclaimed queue. M3: everything the Slack messages
- * trigger (gates, draft, verification). M4: unverify, requestReverification. The weight review comes later.
+ * M1: what ingest needs. M3: everything the Slack messages trigger (gates, draft,
+ * verification). M4: unverify, requestReverification. The weight review comes later.
  */
 import { and, eq, isNull, sql } from "drizzle-orm";
 import type { db } from "@/lib/db/client";
 import {
-  account,
   comments,
   shipmentMergeRequests,
   shipments,
   tickets,
-  user,
   verifications,
   type TimelineEntry,
 } from "@/lib/db/schema";
 import { nextStepFor, weightMismatch, type NextStep } from "./next-step";
+import type { Recipient } from "./recipient";
 import { transition, type GateContext, type ShipmentEvent } from "./state";
 
 export type Tx = Parameters<Parameters<ReturnType<typeof db>["transaction"]>[0]>[0];
@@ -83,12 +82,11 @@ async function apply(
   tx: Tx,
   shipment: Shipment,
   event: ShipmentEvent,
-  changes: Partial<Shipment> & Pick<GateContext, "branch" | "recipientUserId">,
+  changes: Partial<Shipment> & Pick<GateContext, "branch">,
   data?: Record<string, unknown>,
 ): Promise<NextStep> {
   const open = await openMrIds(tx, shipment.id);
   const result = transition(shipment.status, event, {
-    recipientUserId: changes.recipientUserId,
     branch: changes.branch,
     openMrCount: open.length,
   });
@@ -153,7 +151,7 @@ export async function pickBranch(
     tx,
     shipment,
     "pick_branch",
-    { branch: args.branch, recipientUserId: shipment.recipientUserId },
+    { branch: args.branch },
     { branch: args.branch },
   );
 }
@@ -164,10 +162,7 @@ export async function releaseHeld(tx: Tx, args: { actor: Actor; shipmentId: numb
   if (args.actor.kind !== "system") {
     throw new CommandError("forbidden", "releaseHeld is triggered by GitLab events only");
   }
-  return apply(tx, shipment, "release_held", {
-    branch: shipment.branch,
-    recipientUserId: shipment.recipientUserId,
-  });
+  return apply(tx, shipment, "release_held", gateCtx(shipment));
 }
 
 /**
@@ -179,7 +174,7 @@ export async function reship(
   args: {
     actor: Actor;
     shipmentId: number;
-    recipient: { userId: string | null; gitlabId: number | null };
+    recipient: Recipient;
     notesDraft: string | null;
   },
 ): Promise<NextStep> {
@@ -244,53 +239,6 @@ export async function findBranchless(tx: Tx, ticketId: number): Promise<Shipment
     .where(and(eq(shipments.ticketId, ticketId), isNull(shipments.branch)))
     .for("update");
   return row;
-}
-
-function requireLead(actor: Actor): void {
-  if (actor.kind === "user" && actor.role === "lead") return;
-  throw new CommandError("forbidden", "only leads can do this");
-}
-
-/**
- * Leads' unclaimed queue: gives an unclaimed shipment a recipient, who must be a dev or lead
- * with GitLab linked. The shipment moves on to the next gate.
- */
-export async function assignRecipient(
-  tx: Tx,
-  args: { actor: Actor; shipmentId: number; userId: string },
-): Promise<NextStep> {
-  requireLead(args.actor);
-  const shipment = await loadForUpdate(tx, args.shipmentId);
-
-  const [recipient] = await tx
-    .select({ role: user.role, gitlabId: account.accountId })
-    .from(user)
-    .innerJoin(account, and(eq(account.userId, user.id), eq(account.providerId, "gitlab")))
-    .where(eq(user.id, args.userId));
-  if (!recipient || recipient.role === "member") {
-    throw new CommandError("forbidden", `user ${args.userId} isn't a dev or lead with GitLab linked`);
-  }
-
-  return apply(
-    tx,
-    shipment,
-    "assign_recipient",
-    { branch: shipment.branch, recipientUserId: args.userId, recipientGitlabId: Number(recipient.gitlabId) },
-    { by: actorId(args.actor), recipientUserId: args.userId },
-  );
-}
-
-// Leads' unclaimed queue: publishes as is (published_via = lead). The draft notes become final.
-export async function leadPublish(tx: Tx, args: { actor: Actor; shipmentId: number }): Promise<NextStep> {
-  requireLead(args.actor);
-  const shipment = await loadForUpdate(tx, args.shipmentId);
-  return apply(
-    tx,
-    shipment,
-    "lead_publish",
-    { branch: shipment.branch, recipientUserId: shipment.recipientUserId, notesFinal: shipment.notesDraft },
-    { by: actorId(args.actor) },
-  );
 }
 
 const actorId = (actor: Actor) => (actor.kind === "user" ? actor.userId : "system");
@@ -532,4 +480,4 @@ export async function requestReverification(tx: Tx, args: { actor: Actor; shipme
   return { kind: "reverification_requested", shipmentId: shipment.id, commentId: comment.id };
 }
 
-const gateCtx = (shipment: Shipment) => ({ branch: shipment.branch, recipientUserId: shipment.recipientUserId });
+const gateCtx = (shipment: Shipment) => ({ branch: shipment.branch });

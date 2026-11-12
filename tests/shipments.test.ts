@@ -219,11 +219,12 @@ describe.skipIf(!hasDb)("ingest: Done added", () => {
     expect(steps).toEqual([{ kind: "nudge_missing_branch", shipmentId: s.id }]);
   });
 
-  it("is unclaimed when no candidate has linked GitLab, keeping who it was meant for", async () => {
+  it("creates no shipment when no candidate has linked GitLab, but still caches the ticket", async () => {
     const steps = await labelsChanged(["Branch: Main"], ["Branch: Main", DONE]);
-    const [s] = await allShipments();
-    expect(s).toMatchObject({ status: "unclaimed", recipientUserId: null, recipientGitlabId: DEV });
-    expect(steps).toEqual([{ kind: "unclaimed", shipmentId: s.id }]);
+    expect(steps).toEqual([{ kind: "noop", reason: `issue ${ISSUE_ID}: no candidate has connected GitLab` }]);
+    expect(await allShipments()).toEqual([]);
+    expect(await db().select().from(tickets)).toHaveLength(1);
+    expect(queue.jobs).toEqual([]);
   });
 
   it("falls back to the user who applied the label when they're the only linked candidate", async () => {
@@ -346,6 +347,18 @@ describe.skipIf(!hasDb)("ingest: later label changes", () => {
       previous: { notesFinal: "v1", publishedVia: "confirmed", verifications: [{ userId: "u11", kind: "verified" }] },
     });
     expect(rows[0].timeline.some((e) => e.event === "issue_reopened")).toBe(true);
+  });
+
+  it("re-ship with no linked candidate keeps the published row as is", async () => {
+    await labelsChanged(["Branch: Main"], ["Branch: Main", DONE]);
+    const [s] = await allShipments();
+    await db().update(shipments).set({ status: "published", publishedVia: "confirmed", publishedAt: new Date() }).where(eq(shipments.id, s.id));
+    await db().delete(account).where(eq(account.providerId, "gitlab"));
+
+    await labelsChanged(["Branch: Main", DONE], ["Branch: Main"], { action: "reopen" });
+    const steps = await labelsChanged(["Branch: Main"], ["Branch: Main", DONE]);
+    expect(steps).toEqual([{ kind: "noop", reason: `issue ${ISSUE_ID}: no candidate has connected GitLab` }]);
+    expect((await allShipments())[0]).toMatchObject({ id: s.id, status: "published", publishedVia: "confirmed" });
   });
 
   it("ignores edits of issues Shiplog doesn't know, without calling GitLab", async () => {

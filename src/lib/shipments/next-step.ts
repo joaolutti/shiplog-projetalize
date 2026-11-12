@@ -2,7 +2,6 @@
 import type { ShipmentStatus } from "./state";
 
 export type NextStep =
-  | { kind: "unclaimed"; shipmentId: number }
   | { kind: "nudge_missing_branch"; shipmentId: number }
   | { kind: "nudge_open_mrs"; shipmentId: number; openMrIds: number[] }
   | { kind: "send_draft"; shipmentId: number; weightMismatch: WeightMismatch | null }
@@ -32,8 +31,6 @@ export function nextStepFor(
   extra: { openMrIds: number[]; weightMismatch: WeightMismatch | null },
 ): NextStep {
   switch (status) {
-    case "unclaimed":
-      return { kind: "unclaimed", shipmentId };
     case "needs_branch":
       return { kind: "nudge_missing_branch", shipmentId };
     case "awaiting_hold_decision":

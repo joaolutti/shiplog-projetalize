@@ -29,6 +29,13 @@
       "when": 1794426906447,
       "tag": "0003_mentions",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794487494637,
+      "tag": "0004_drop_unclaimed",
+      "breakpoints": true
     }
   ]
 }

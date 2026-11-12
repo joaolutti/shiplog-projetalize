@@ -4,7 +4,9 @@
  *
  * Issue Hook (trigger = Done label or a trigger Status, see gitlab/trigger.ts):
  *   - became triggered   → upsert ticket, one shipment per branch (or one needs_branch
- *                          shipment when there is none); a published one re-ships (D7)
+ *                          shipment when there is none); a published one re-ships (D7).
+ *                          No shipment is created or re-shipped without a recipient who
+ *                          connected GitLab (recipient.ts)
  *   - new branch         → (already triggered) new shipment for that branch, or answers
  *                          the branch gate of a needs_branch shipment. A Branch label or a
  *                          move between "Deployed <branch>" statuses
@@ -246,10 +248,15 @@ async function shipToBranch(
 ): Promise<NextStep> {
   const { ticket, branch } = args;
 
+  const noRecipient: NextStep = {
+    kind: "noop",
+    reason: `issue ${ticket.gitlabIssueId}: no candidate has connected GitLab`,
+  };
+
   if (branch === null) {
     const branchless = await findBranchless(tx, ticket.id);
     if (branchless) return { kind: "noop", reason: `shipment ${branchless.id} already waiting for a branch` };
-    return createShipment(tx, args);
+    return args.recipient ? createShipment(tx, { ...args, recipient: args.recipient }) : noRecipient;
   }
 
   const [existing] = await tx
@@ -261,12 +268,8 @@ async function shipToBranch(
   if (existing) {
     await snapshotMergeRequests(tx, existing.id, args.mrs, args.stats);
     if (!args.started) return { kind: "noop", reason: `shipment ${existing.id} already exists for ${branch}` };
-    return reship(tx, {
-      actor: SYSTEM,
-      shipmentId: existing.id,
-      recipient: { userId: args.recipient?.userId ?? null, gitlabId: args.recipient?.gitlabId ?? null },
-      notesDraft: args.notesDraft,
-    });
+    if (!args.recipient) return noRecipient;
+    return reship(tx, { actor: SYSTEM, shipmentId: existing.id, recipient: args.recipient, notesDraft: args.notesDraft });
   }
 
   // A Branch label answers the branch gate of a waiting shipment instead of adding another.
@@ -276,7 +279,7 @@ async function shipToBranch(
     return pickBranch(tx, { actor: SYSTEM, shipmentId: branchless.id, branch });
   }
 
-  return createShipment(tx, args);
+  return args.recipient ? createShipment(tx, { ...args, recipient: args.recipient }) : noRecipient;
 }
 
 async function createShipment(
@@ -284,18 +287,14 @@ async function createShipment(
   args: {
     ticket: TicketRow;
     branch: string | null;
-    recipient: Recipient | null;
+    recipient: Recipient;
     mrs: RelatedMergeRequest[];
     stats: Map<number, MergeRequestStats>;
     notesDraft: string;
   },
 ): Promise<NextStep> {
   const openMrIds = openMergeRequests(args.mrs).map((mr) => mr.id);
-  const status = gateStatus({
-    recipientUserId: args.recipient?.userId ?? null,
-    branch: args.branch,
-    openMrCount: openMrIds.length,
-  });
+  const status = gateStatus({ branch: args.branch, openMrCount: openMrIds.length });
 
   const [shipment] = await tx
     .insert(shipments)
@@ -303,8 +302,8 @@ async function createShipment(
       ticketId: args.ticket.id,
       branch: args.branch,
       status,
-      recipientUserId: args.recipient?.userId ?? null,
-      recipientGitlabId: args.recipient?.gitlabId ?? null,
+      recipientUserId: args.recipient.userId,
+      recipientGitlabId: args.recipient.gitlabId,
       notesDraft: args.notesDraft,
       timeline: [timelineEntry("created", { status, branch: args.branch })],
       pendingSince: status === "pending_confirmation" ? new Date() : null,

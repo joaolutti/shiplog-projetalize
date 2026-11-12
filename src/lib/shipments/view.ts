@@ -19,7 +19,6 @@ export interface LoadedShipment {
   requesterDm: { channel: string; ts: string } | null;
   pendingSince: Date | null;
   reminderSentAt: Date | null;
-  leadsNotifiedAt: Date | null;
 }
 
 export async function loadShipment(shipmentId: number): Promise<LoadedShipment | null> {
@@ -64,7 +63,6 @@ export async function loadShipment(shipmentId: number): Promise<LoadedShipment |
         webUrl: mr.webUrl,
         state: mr.state,
       })),
-      intendedGitlabId: s.recipientGitlabId,
       mentions: s.mentionSlackIds,
     },
     ticketId: t.id,
@@ -75,7 +73,6 @@ export async function loadShipment(shipmentId: number): Promise<LoadedShipment |
       s.requesterDmChannelId && s.requesterDmTs ? { channel: s.requesterDmChannelId, ts: s.requesterDmTs } : null,
     pendingSince: s.pendingSince,
     reminderSentAt: s.reminderSentAt,
-    leadsNotifiedAt: s.leadsNotifiedAt,
   };
 }
 
@@ -86,16 +83,6 @@ export async function slackIdOf(userId: string): Promise<string | null> {
     .from(account)
     .where(and(eq(account.userId, userId), eq(account.providerId, "slack")));
   return row?.accountId ?? null;
-}
-
-// Slack user IDs of every lead who has signed in.
-export async function leadSlackIds(): Promise<string[]> {
-  const rows = await db()
-    .select({ accountId: account.accountId })
-    .from(account)
-    .innerJoin(user, eq(user.id, account.userId))
-    .where(and(eq(user.role, "lead"), eq(account.providerId, "slack")));
-  return rows.map((r) => r.accountId);
 }
 
 // Shiplog users for these Slack IDs (only those who exist).

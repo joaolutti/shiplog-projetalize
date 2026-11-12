@@ -47,10 +47,10 @@ export const FIELDS = { text: "text" } as const;
 
 export interface ShipmentView {
   id: number;
-  status: "unclaimed" | "needs_branch" | "awaiting_hold_decision" | "held" | "pending_confirmation" | "published";
+  status: "needs_branch" | "awaiting_hold_decision" | "held" | "pending_confirmation" | "published";
   branch: string | null;
   notes: string | null;
-  publishedVia: "confirmed" | "auto" | "lead" | null;
+  publishedVia: "confirmed" | "auto" | null;
   // Page on the web app.
   url: string;
   ticket: {
@@ -68,8 +68,6 @@ export interface ShipmentView {
   mergeRequests: Array<{ ref: string; title: string; webUrl: string; state: string }>;
   // Slack users the dev chose to @mention on the channel card.
   mentions: string[];
-  // GitLab user it was meant for, when unclaimed.
-  intendedGitlabId: number | null;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────
@@ -156,9 +154,6 @@ export function recipientDm(v: ShipmentView, opts: { branchChoices: string[]; au
       return draftDm(v, opts.autoPublishHours);
     case "published":
       return publishedDm(v);
-    case "unclaimed":
-      // No recipient yet; leads get leadsUnclaimedDm instead.
-      return { text: `Entrega sem responsável: #${v.ticket.iid}`, blocks: [section(`Entrega sem responsável: ${issueLink(v)}`)] };
   }
 }
 
@@ -256,12 +251,7 @@ function draftDm(v: ShipmentView, autoPublishHours: number): SlackMessage {
 }
 
 function publishedDm(v: ShipmentView): SlackMessage {
-  const how =
-    v.publishedVia === "auto"
-      ? "publicada automaticamente (notas não confirmadas)"
-      : v.publishedVia === "lead"
-        ? "publicada por um lead"
-        : "publicada";
+  const how = v.publishedVia === "auto" ? "publicada automaticamente (notas não confirmadas)" : "publicada";
   return {
     text: `#${v.ticket.iid} publicada em ${v.branch}`,
     blocks: [
@@ -281,22 +271,6 @@ export function reminderReply(v: ShipmentView, hoursLeft: number): SlackMessage 
       section(
         `:bell: Lembrete: o rascunho de ${issueLink(v)} ainda aguarda confirmação. Sem resposta, publico em ~${hoursLeft} h com as notas como estão.`,
       ),
-    ],
-  };
-}
-
-// ── Leads ────────────────────────────────────────────────────────────
-
-export function leadsUnclaimedDm(v: ShipmentView, unclaimedUrl: string): SlackMessage {
-  const meantFor = v.intendedGitlabId
-    ? `Era para o usuário ${v.intendedGitlabId} do GitLab, que ainda não conectou o Shiplog.`
-    : "Não deu para saber de quem é.";
-  return {
-    text: `Entrega sem responsável: #${v.ticket.iid}`,
-    blocks: [
-      section(`:raised_hand: *Entrega sem responsável*: ${issueLink(v)} → *${esc(v.branch ?? "sem branch")}*\n${meantFor}`),
-      ...detailsContext(v),
-      actions("unclaimed", [linkButton("Abrir a fila", unclaimedUrl)]),
     ],
   };
 }

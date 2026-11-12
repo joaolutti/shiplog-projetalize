@@ -1,8 +1,8 @@
 /**
  * Who gets the draft DM: assignee → linked-MR author → user who applied the label (D4).
  * The recipient is the first candidate, in that order, who has linked GitLab to Shiplog
- * (account.provider_id = "gitlab"). If none has, the shipment is unclaimed but keeps the
- * first candidate's GitLab ID so leads can see who it was meant for.
+ * (account.provider_id = "gitlab"). If none has, there is no recipient and ingest creates no
+ * shipment: Shiplog only works with people who connected GitLab.
  */
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db/client";
@@ -16,8 +16,7 @@ export interface RecipientCandidates {
 
 export interface Recipient {
   gitlabId: number;
-  // Linked Shiplog user, or null when no candidate is linked (→ unclaimed).
-  userId: string | null;
+  userId: string;
 }
 
 // Candidates in D4 order, without repeats.
@@ -32,11 +31,8 @@ export function pickRecipient(
   c: RecipientCandidates,
   linked: ReadonlyMap<number, string>,
 ): Recipient | null {
-  const order = candidateOrder(c);
-  if (order.length === 0) return null;
-  const first = order.find((id) => linked.has(id));
-  if (first === undefined) return { gitlabId: order[0], userId: null };
-  return { gitlabId: first, userId: linked.get(first)! };
+  const first = candidateOrder(c).find((id) => linked.has(id));
+  return first === undefined ? null : { gitlabId: first, userId: linked.get(first)! };
 }
 
 // GitLab user ID → Shiplog user ID for the given GitLab IDs that have linked accounts.

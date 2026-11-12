@@ -422,44 +422,6 @@ Quem mais deve ser marcado no card do canal?",
     ],
     "text": "Aguardando o merge de #412",
   },
-  "leadsUnclaimed": {
-    "blocks": [
-      {
-        "text": {
-          "text": ":raised_hand: *Entrega sem responsável*: <https://gitlab.com/acme/billing-svc/-/issues/412|#412 Corrigir login com SSO> → *Main*
-Era para o usuário 11 do GitLab, que ainda não conectou o Shiplog.",
-          "type": "mrkdwn",
-        },
-        "type": "section",
-      },
-      {
-        "elements": [
-          {
-            "text": "acme/billing-svc · MRs: <https://gitlab.com/acme/billing-svc/-/merge_requests/45|acme/billing-svc!45> (merged) · Solicitante: <@U0REQUESTER>",
-            "type": "mrkdwn",
-          },
-        ],
-        "type": "context",
-      },
-      {
-        "block_id": "unclaimed",
-        "elements": [
-          {
-            "action_id": "shipment.open_link",
-            "text": {
-              "emoji": true,
-              "text": "Abrir a fila",
-              "type": "plain_text",
-            },
-            "type": "button",
-            "url": "https://shiplog.example.com/unclaimed",
-          },
-        ],
-        "type": "actions",
-      },
-    ],
-    "text": "Entrega sem responsável: #412",
-  },
   "needsBranch": {
     "blocks": [
       {

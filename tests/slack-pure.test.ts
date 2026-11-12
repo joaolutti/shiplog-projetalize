@@ -1,7 +1,7 @@
 // M3 pure pieces: request signing, DM allowlist, requester matching, Block Kit snapshots.
 import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { ACTIONS, editNotesModal, feedCard, leadsUnclaimedDm, recipientDm, reminderReply, requesterDm, reverificationDm } from "@/lib/slack/blocks";
+import { ACTIONS, editNotesModal, feedCard, recipientDm, reminderReply, requesterDm, reverificationDm } from "@/lib/slack/blocks";
 import { dmTarget } from "@/lib/slack/client";
 import { matchRequester, normalizeName, type DirectoryUser } from "@/lib/slack/directory";
 import { FIXTURES } from "@/lib/slack/fixtures";
@@ -115,7 +115,6 @@ describe("Block Kit messages", () => {
       held: recipientDm(FIXTURES.held, opts),
       published: recipientDm(FIXTURES.published, opts),
       reminder: reminderReply(FIXTURES.draft, 20),
-      leadsUnclaimed: leadsUnclaimedDm(FIXTURES.unclaimed, "https://shiplog.example.com/unclaimed"),
       feedCard: feedCard(FIXTURES.published),
       feedCardAuto: feedCard(FIXTURES.publishedAuto),
       requester: requesterDm(FIXTURES.published, null),

@@ -9,12 +9,11 @@ import { env } from "@/lib/env";
 import { parseRequester } from "@/lib/gitlab/templates";
 import { autoPublish } from "@/lib/shipments/commands";
 import { execute } from "@/lib/shipments/effects";
-import { leadSlackIds, loadShipment, slackIdOf, usersBySlackId } from "@/lib/shipments/view";
+import { loadShipment, slackIdOf, usersBySlackId } from "@/lib/shipments/view";
 import {
   commentReply,
   feedCard,
   issueReportedDm,
-  leadsUnclaimedDm,
   recipientDm,
   reminderReply,
   requesterDm,
@@ -25,8 +24,6 @@ import { resolveRequester } from "@/lib/slack/directory";
 import type { ShipmentJob, TimerJob } from "../jobs";
 
 const log = (job: string, msg: string) => console.log(`[${job}] ${msg}`);
-
-const appUrl = () => env("APP_URL").replace(/\/+$/, "");
 
 // The recipient's DM for the current status: posted once, then updated in place.
 export async function syncRecipientDm({ shipmentId }: ShipmentJob): Promise<void> {
@@ -66,16 +63,6 @@ async function resolveTicketRequester(ticketId: number): Promise<void> {
     .where(and(eq(tickets.id, ticketId), eq(tickets.requesterSource, "none")));
 }
 
-// DM every lead once about an unclaimed shipment (D10).
-export async function notifyLeadsUnclaimed({ shipmentId }: ShipmentJob): Promise<void> {
-  const s = await loadShipment(shipmentId);
-  if (!s || s.view.status !== "unclaimed" || s.leadsNotifiedAt) return;
-  const leads = await leadSlackIds();
-  for (const lead of leads) await sendDm(lead, leadsUnclaimedDm(s.view, `${appUrl()}/unclaimed`));
-  await db().update(shipments).set({ leadsNotifiedAt: new Date() }).where(eq(shipments.id, shipmentId));
-  log("notify-leads-unclaimed", `${shipmentId}: ${leads.length} lead(s)`);
-}
-
 // One reminder in the draft's thread, if this draft cycle is still waiting (D8).
 export async function sendReminder({ shipmentId, cycle }: TimerJob): Promise<void> {
   const s = await loadShipment(shipmentId);
@@ -96,7 +83,7 @@ export async function runAutoPublish({ shipmentId, cycle }: TimerJob): Promise<v
 export async function publishShipment({ shipmentId }: ShipmentJob): Promise<void> {
   const loaded = await loadShipment(shipmentId);
   if (!loaded || loaded.view.status !== "published") return;
-  // A lead publishing an unclaimed shipment skips the draft, where the requester is usually matched.
+  // Usually matched when the draft went out; this retries a miss.
   await resolveTicketRequester(loaded.ticketId);
   const s = (await loadShipment(shipmentId))!;
 
@@ -136,7 +123,7 @@ export async function syncRequesterDm({ shipmentId }: ShipmentJob): Promise<void
     .where(eq(shipments.id, shipmentId));
 }
 
-// DMs the dev (or the leads, when nobody owns it) that someone reported a problem.
+// DMs the dev that someone reported a problem.
 export async function notifyIssueReported({ shipmentId, commentId }: ShipmentJob & { commentId: number }): Promise<void> {
   const s = await loadShipment(shipmentId);
   if (!s) return;
@@ -146,8 +133,8 @@ export async function notifyIssueReported({ shipmentId, commentId }: ShipmentJob
   const reporterSlackId = await slackIdOf(comment.authorUserId);
   const message = issueReportedDm(s.view, reporterSlackId, comment.body);
   const recipientSlackId = s.recipientUserId ? await slackIdOf(s.recipientUserId) : null;
-  const targets = recipientSlackId ? [recipientSlackId] : await leadSlackIds();
-  for (const target of targets) await sendDm(target, message);
+  if (!recipientSlackId) return log("notify-issue-reported", `${shipmentId}: recipient hasn't signed in with Slack`);
+  await sendDm(recipientSlackId, message);
 }
 
 /**

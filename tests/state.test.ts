@@ -8,21 +8,17 @@ import {
   type ShipmentStatus,
 } from "@/lib/shipments/state";
 
-const ready: GateContext = { recipientUserId: "u1", branch: "Main", openMrCount: 0 };
+const ready: GateContext = { branch: "Main", openMrCount: 0 };
 
 describe("gateStatus", () => {
-  it("runs recipient → branch → open MRs → draft", () => {
-    expect(gateStatus({ recipientUserId: null, branch: null, openMrCount: 2 })).toBe("unclaimed");
-    expect(gateStatus({ recipientUserId: "u1", branch: null, openMrCount: 2 })).toBe("needs_branch");
-    expect(gateStatus({ recipientUserId: "u1", branch: "Main", openMrCount: 2 })).toBe(
-      "awaiting_hold_decision",
-    );
+  it("runs branch → open MRs → draft", () => {
+    expect(gateStatus({ branch: null, openMrCount: 2 })).toBe("needs_branch");
+    expect(gateStatus({ branch: "Main", openMrCount: 2 })).toBe("awaiting_hold_decision");
     expect(gateStatus(ready)).toBe("pending_confirmation");
   });
 });
 
 const STATUSES: ShipmentStatus[] = [
-  "unclaimed",
   "needs_branch",
   "awaiting_hold_decision",
   "held",
@@ -32,16 +28,7 @@ const STATUSES: ShipmentStatus[] = [
 
 // Expected result with all gates answerable (`ready`); "x" = invalid transition.
 const TABLE: Record<ShipmentEvent, Record<ShipmentStatus, ShipmentStatus | "x">> = {
-  assign_recipient: {
-    unclaimed: "pending_confirmation",
-    needs_branch: "x",
-    awaiting_hold_decision: "x",
-    held: "x",
-    pending_confirmation: "x",
-    published: "x",
-  },
   pick_branch: {
-    unclaimed: "pending_confirmation",
     needs_branch: "pending_confirmation",
     awaiting_hold_decision: "x",
     held: "x",
@@ -49,7 +36,6 @@ const TABLE: Record<ShipmentEvent, Record<ShipmentStatus, ShipmentStatus | "x">>
     published: "x",
   },
   hold_until_merged: {
-    unclaimed: "x",
     needs_branch: "x",
     awaiting_hold_decision: "held",
     held: "x",
@@ -57,7 +43,6 @@ const TABLE: Record<ShipmentEvent, Record<ShipmentStatus, ShipmentStatus | "x">>
     published: "x",
   },
   publish_anyway: {
-    unclaimed: "x",
     needs_branch: "x",
     awaiting_hold_decision: "pending_confirmation",
     held: "x",
@@ -65,7 +50,6 @@ const TABLE: Record<ShipmentEvent, Record<ShipmentStatus, ShipmentStatus | "x">>
     published: "x",
   },
   release_held: {
-    unclaimed: "x",
     needs_branch: "x",
     awaiting_hold_decision: "pending_confirmation",
     held: "pending_confirmation",
@@ -73,7 +57,6 @@ const TABLE: Record<ShipmentEvent, Record<ShipmentStatus, ShipmentStatus | "x">>
     published: "x",
   },
   confirm: {
-    unclaimed: "x",
     needs_branch: "x",
     awaiting_hold_decision: "x",
     held: "x",
@@ -81,23 +64,13 @@ const TABLE: Record<ShipmentEvent, Record<ShipmentStatus, ShipmentStatus | "x">>
     published: "x",
   },
   auto_publish: {
-    unclaimed: "x",
     needs_branch: "x",
     awaiting_hold_decision: "x",
     held: "x",
     pending_confirmation: "published",
     published: "x",
   },
-  lead_publish: {
-    unclaimed: "published",
-    needs_branch: "published",
-    awaiting_hold_decision: "published",
-    held: "published",
-    pending_confirmation: "published",
-    published: "x",
-  },
   reship: {
-    unclaimed: "x",
     needs_branch: "x",
     awaiting_hold_decision: "x",
     held: "x",
@@ -126,33 +99,17 @@ describe("transition details", () => {
   it("records how a shipment was published", () => {
     expect(transition("pending_confirmation", "confirm", ready)).toMatchObject({ publishedVia: "confirmed" });
     expect(transition("pending_confirmation", "auto_publish", ready)).toMatchObject({ publishedVia: "auto" });
-    expect(transition("unclaimed", "lead_publish", ready)).toMatchObject({ publishedVia: "lead" });
   });
 
   it("answering a gate lands on the next gate that still applies", () => {
     expect(transition("needs_branch", "pick_branch", { ...ready, openMrCount: 1 })).toMatchObject({
       status: "awaiting_hold_decision",
     });
-    expect(transition("unclaimed", "assign_recipient", { ...ready, branch: null })).toMatchObject({
-      status: "needs_branch",
-    });
-    // A lead picking the branch of an unclaimed shipment leaves it unclaimed.
-    expect(transition("unclaimed", "pick_branch", { ...ready, recipientUserId: null })).toMatchObject({
-      status: "unclaimed",
-    });
   });
 
-  it("assign_recipient needs a recipient", () => {
-    expect(transition("unclaimed", "assign_recipient", { ...ready, recipientUserId: null }).ok).toBe(false);
-  });
-
-  it("pick_branch and lead_publish need a branch", () => {
+  it("pick_branch needs a branch", () => {
     const noBranch = { ...ready, branch: null };
     expect(transition("needs_branch", "pick_branch", noBranch)).toEqual({
-      ok: false,
-      error: { code: "branch_required" },
-    });
-    expect(transition("unclaimed", "lead_publish", noBranch)).toEqual({
       ok: false,
       error: { code: "branch_required" },
     });
@@ -166,8 +123,8 @@ describe("transition details", () => {
   });
 
   it("a re-ship starts again at the first open gate", () => {
-    expect(transition("published", "reship", { ...ready, recipientUserId: null })).toMatchObject({
-      status: "unclaimed",
+    expect(transition("published", "reship", { ...ready, branch: null })).toMatchObject({
+      status: "needs_branch",
     });
     expect(transition("published", "reship", { ...ready, openMrCount: 2 })).toMatchObject({
       status: "awaiting_hold_decision",

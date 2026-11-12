@@ -20,7 +20,6 @@ const base: ShipmentView = {
   mergeRequests: [
     { ref: "acme/billing-svc!45", title: "Corrige SSO", webUrl: "https://gitlab.com/acme/billing-svc/-/merge_requests/45", state: "merged" },
   ],
-  intendedGitlabId: 11,
   mentions: [],
 };
 
@@ -41,5 +40,4 @@ export const FIXTURES = {
   draftWithMentions: { ...base, mentions: ["U0QA", "U0PM"] },
   published: { ...base, status: "published", publishedVia: "confirmed", mentions: ["U0QA"] },
   publishedAuto: { ...base, status: "published", publishedVia: "auto", requester: { kind: "none" } },
-  unclaimed: { ...base, status: "unclaimed", branch: "Main" },
 } satisfies Record<string, ShipmentView>;

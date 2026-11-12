@@ -1,12 +1,12 @@
-// M2: leads' unclaimed queue, role changes and role-aware queries (database).
+// M2: role changes and role-aware queries (database).
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { setRole } from "@/lib/auth/roles";
 import type { Viewer } from "@/lib/auth/viewer";
 import { db } from "@/lib/db/client";
-import { account, shipments, tickets, user } from "@/lib/db/schema";
-import { assignRecipient, CommandError, leadPublish, type Actor } from "@/lib/shipments/commands";
-import { listAssignable, listTeam, listUnclaimed } from "@/lib/shipments/queries";
+import { account, user } from "@/lib/db/schema";
+import type { Actor } from "@/lib/shipments/commands";
+import { listTeam } from "@/lib/shipments/queries";
 import { hasDb, resetDb } from "./helpers/db";
 
 const LEAD: Actor = { kind: "user", userId: "lead", role: "lead" };
@@ -32,74 +32,13 @@ async function seed() {
     { id: "a-member", userId: "member", providerId: "gitlab", accountId: "33" },
     { id: "a-lead", userId: "lead", providerId: "gitlab", accountId: "44" },
   ]);
-  const [t] = await db()
-    .insert(tickets)
-    .values({ gitlabIssueId: 1, gitlabProjectId: 7, projectPath: "acme/app", iid: 5, title: "Fix", webUrl: "u", gitlabState: "opened" })
-    .returning();
-  const [s] = await db()
-    .insert(shipments)
-    .values({ ticketId: t.id, branch: "Main", status: "unclaimed", recipientGitlabId: 99, notesDraft: "Corrige X" })
-    .returning();
-  return s;
 }
 
-describe.skipIf(!hasDb)("unclaimed queue", () => {
-  beforeEach(async () => {
+describe.skipIf(!hasDb)("listTeam", () => {
+  it("shows the team to leads only", async () => {
     await resetDb();
-  });
-
-  it("a lead assigns a linked dev, which moves the shipment on to the draft", async () => {
-    const s = await seed();
-    const step = await db().transaction((tx) =>
-      assignRecipient(tx, { actor: LEAD, shipmentId: s.id, userId: "dev" }),
-    );
-    expect(step).toEqual({ kind: "send_draft", shipmentId: s.id, weightMismatch: null });
-    const [row] = await db().select().from(shipments).where(eq(shipments.id, s.id));
-    expect(row).toMatchObject({ status: "pending_confirmation", recipientUserId: "dev", recipientGitlabId: 11 });
-    expect(row.timeline.at(-1)).toMatchObject({ event: "assign_recipient", data: { by: "lead" } });
-  });
-
-  it("only devs and leads with GitLab linked can be assigned", async () => {
-    const s = await seed();
-    for (const userId of ["member", "nolink"]) {
-      await expect(
-        db().transaction((tx) => assignRecipient(tx, { actor: LEAD, shipmentId: s.id, userId })),
-      ).rejects.toBeInstanceOf(CommandError);
-    }
-  });
-
-  it("only leads can assign or publish", async () => {
-    const s = await seed();
-    await expect(
-      db().transaction((tx) => assignRecipient(tx, { actor: DEV, shipmentId: s.id, userId: "dev" })),
-    ).rejects.toMatchObject({ code: "forbidden" });
-    await expect(db().transaction((tx) => leadPublish(tx, { actor: DEV, shipmentId: s.id }))).rejects.toMatchObject({
-      code: "forbidden",
-    });
-  });
-
-  it("a lead publishes as is: published_via lead, draft notes become final", async () => {
-    const s = await seed();
-    await db().transaction((tx) => leadPublish(tx, { actor: LEAD, shipmentId: s.id }));
-    const [row] = await db().select().from(shipments).where(eq(shipments.id, s.id));
-    expect(row).toMatchObject({ status: "published", publishedVia: "lead", notesFinal: "Corrige X" });
-    expect(row.publishedAt).toBeInstanceOf(Date);
-  });
-
-  it("publishing needs a branch", async () => {
-    const s = await seed();
-    await db().update(shipments).set({ branch: null }).where(eq(shipments.id, s.id));
-    const step = await db().transaction((tx) => leadPublish(tx, { actor: LEAD, shipmentId: s.id }));
-    expect(step).toMatchObject({ kind: "noop" });
-    expect((await db().select().from(shipments))[0].status).toBe("unclaimed");
-  });
-
-  it("queries show the queue and team to leads only", async () => {
     await seed();
-    expect(await listUnclaimed(viewer("lead", "lead"))).toHaveLength(1);
-    expect(await listUnclaimed(viewer("dev", "dev"))).toEqual([]);
     expect(await listTeam(viewer("member", "member"))).toEqual([]);
-    expect((await listAssignable(viewer("lead", "lead"))).map((m) => m.id).sort()).toEqual(["dev", "lead"]);
   });
 });
 
