@@ -146,6 +146,7 @@ Shiplog only tracks deliveries of people who did (D45). Everyone else only needs
 | No DM after moving an issue | Nobody on the issue connected GitLab (D45), the webhook isn't on this URL, or its secret differs from `GITLAB_WEBHOOK_SECRET` |
 | GitLab shows the webhook as disabled | Too many failed deliveries; fix the cause, then re-enable it and use **Test** → Issues events |
 | Two posts per delivery | A second webhook on `p1429/predialize` still points at a dev tunnel with a worker running |
+| `self signed certificate in certificate chain` on start | An old build: `src/lib/db/pg-url.ts` makes `pg` read `sslmode=require` as libpq does (encrypt, don't verify) |
 | Notes are just the issue title | The LLM fell back; the error is in `llm_audit_log.error` |
 | Sign-in loops back to the sign-in page | `APP_URL` doesn't match the URL in the browser, or the Slack redirect URL is wrong |
 

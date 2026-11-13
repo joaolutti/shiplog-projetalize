@@ -4,6 +4,7 @@
  */
 import { PgBoss, type Db, type SendOptions } from "pg-boss";
 import type { TransactionSql } from "postgres";
+import { pgUrl } from "@/lib/db/pg-url";
 import { env } from "@/lib/env";
 import type { Tx } from "@/lib/shipments/commands";
 import type { JobName } from "@/worker/jobs";
@@ -14,7 +15,7 @@ const g = globalThis as typeof globalThis & { __shiplogBoss?: Promise<PgBoss> };
 function boss(): Promise<PgBoss> {
   g.__shiplogBoss ??= (async () => {
     const instance = new PgBoss({
-      connectionString: env("DATABASE_URL"),
+      connectionString: pgUrl(env("DATABASE_URL")),
       supervise: false,
       schedule: false,
     });
