@@ -1,6 +1,6 @@
 # Shiplog — Project Scope
 
-> Status: **M1–M3 done; M4 (web app) built**, pending the team's real use. Hosting stays local until v1.
+> Status: **v1 complete (M1–M5)**. Next: the deploy on free plans (D56, `docs/DEPLOY.md`) and the team's real use.
 > Last updated: 2026-11-10. System design: [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
 > Decisions made after the handoff are in §13.
 
@@ -268,7 +268,7 @@ The code is provider-agnostic: the AI SDK with an OpenAI-compatible base URL, co
 | LLM | Vercel AI SDK + `@ai-sdk/openai-compatible` | Any provider in §9 by config. Structured output with zod |
 | Validation | zod | Env, webhook payloads, LLM output |
 | Runtime | **Bun** for installs, scripts and the worker; **Node 22** for Next.js (D43) | Fast installs, TypeScript without `tsx`; Next is tested on Node |
-| Hosting | **Render**: web service + background worker + managed Postgres | Docker-based, so it can move to the company cloud later |
+| Hosting | **Render** free web service running web + worker, **Supabase** Postgres (D56) | Docker-based, so it can move to paid plans or the company cloud later |
 
 ### Endpoints
 | Path | Purpose |
@@ -331,8 +331,7 @@ The code is provider-agnostic: the AI SDK with an OpenAI-compatible base URL, co
 
 ## 12. Open items
 
-- [ ] **Hosting:** the app runs locally behind the `shiplog-dev.lutti.dev` tunnel until v1; deploy to Render then,
-      and have the team sign in and connect GitLab at that point.
+- [ ] **Hosting:** deploy on free plans (D56) following `docs/DEPLOY.md`, then have the team sign in and connect GitLab.
 - [ ] **Visual branding:** a mascot identity for the Slack bot and web app: a little helper character dressed as a
       pirate (we're *shipping* things). Covers the bot avatar, app icon and empty states. Before M3's Slack
       messages are finalized and M4's design system.
@@ -381,3 +380,4 @@ Numbered to continue the decision log in `HANDOFF.md` §3. Where they differ, th
 | D53 | **✅ on the channel card and verification mirror each other.** A ✅ reaction verifies the shipment as that Slack user (account created on first contact, D12); removing it takes their verification back but never drops a reported problem. Verified in Shiplog (web or DM) with nobody's ✅ on the card yet → the bot adds its own ✅, and removes it once people react or the shipment stops being verified. Only `:white_check_mark:` on the channel card counts. Slack lets the bot remove only its own reactions, so undoing a verification on the web leaves that person's ✅ on the card; accepted for v1 (2026-11-13), the web is the record |
 | D54 | **Reminders only in business hours**: 4 h after the draft, moved to the next São Paulo business time (Monday–Friday, 9:00–18:00) if it lands outside it. The reminder says how long is left until auto-publish (24 h, which isn't moved). National holidays count as business days for now |
 | D55 | **No MR, repository or line counts in v1**, for any role (D51): most are 0 because the MRs live in repos the token can't read. The ticket page also drops the weight panel and the Staging → Main track |
+| D56 | **v1 runs on free plans.** One Render web service runs the migrations, the worker and the web app (`scripts/start.sh`), since Render's free plan has no background workers; Postgres on Supabase (no compute metering; Render's free Postgres expires after 30 days); a 10-minute keep-alive ping so the service never sleeps past Slack's 3-second deadline. The production Slack app is created from `docs/slack-manifest.yaml`; the dev app stays for local work. Paid plans later are a configuration change |

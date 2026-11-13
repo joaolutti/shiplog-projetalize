@@ -104,6 +104,7 @@ Events APIs · GitLab REST API (read-only) · OpenRouter (any OpenAI-compatible 
 | [Roadmap](docs/ROADMAP.md) | What comes after v1 |
 | [Technical overview](docs/TECHNICAL.md) | Architecture, flows, the LLM pipeline, security and data retention |
 | [Development](docs/DEVELOPMENT.md) | Running it locally, scripts, tests, tunnels |
+| [Deploy](docs/DEPLOY.md) | Putting it on the air: Render, Supabase, the Slack app and GitLab, step by step |
 | [Scope and decisions](SCOPE.md) | The source of truth for behaviour, with every decision (D1–D55) |
 | [Architecture notes](docs/ARCHITECTURE.md) | State machine and design details from the build |
 

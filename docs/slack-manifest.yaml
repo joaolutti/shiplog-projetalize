@@ -1,0 +1,42 @@
+# Slack app manifest for Shiplog. Replace every https://APP_URL with the deployed address
+# (e.g. https://shiplog.onrender.com), then: api.slack.com/apps → Create New App → From a manifest.
+# See docs/DEPLOY.md. Keep a separate app (e.g. "Shiplog (dev)") for local development.
+display_information:
+  name: Shiplog
+  description: Every delivery announced, verified and on record.
+  long_description: Shiplog turns a GitLab issue moving to Deployed Main or Staging into a delivery announcement. The developer confirms an LLM-drafted note in a DM, the team channel gets the post in its usual format, the requester is asked to verify, and a web app keeps the record of what shipped, where, and who checked it. Anyone can verify with a ✅ on the post, on the web, or from their DM.
+  background_color: "#180644"
+features:
+  app_home:
+    home_tab_enabled: false
+    messages_tab_enabled: true
+    messages_tab_read_only_enabled: true
+  bot_user:
+    display_name: Shiplog
+    always_online: true
+oauth_config:
+  redirect_urls:
+    - https://APP_URL/api/auth/callback/slack
+  scopes:
+    user:
+      - openid
+      - email
+      - profile
+    bot:
+      - chat:write
+      - im:write
+      - users:read
+      - reactions:read
+      - reactions:write
+settings:
+  event_subscriptions:
+    request_url: https://APP_URL/api/slack/events
+    bot_events:
+      - reaction_added
+      - reaction_removed
+  interactivity:
+    is_enabled: true
+    request_url: https://APP_URL/api/slack/interactions
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false

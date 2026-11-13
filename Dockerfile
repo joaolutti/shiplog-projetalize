@@ -1,4 +1,5 @@
-# One image, two processes on Render: `web` (Next.js on Node) and `worker` (pg-boss jobs on Bun).
+# One image. On Render's free plan, scripts/start.sh runs the migrations, the worker (pg-boss on Bun)
+# and the web app (Next.js on Node) in one service; `bun run start` / `bun run worker` run them apart.
 FROM node:22-slim AS base
 RUN npm install -g bun@1.4.4
 WORKDIR /app
