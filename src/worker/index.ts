@@ -3,6 +3,7 @@
  * Runs pg-boss on the app database; registers one handler per queue in ./jobs.
  */
 import { PgBoss } from "pg-boss";
+import { pgUrl } from "@/lib/db/pg-url";
 import { env } from "@/lib/env";
 import type { InteractionPayload } from "@/lib/slack/interactions";
 import { handleReaction, type ReactionEvent } from "@/lib/slack/events";
@@ -22,7 +23,7 @@ import {
 import { JOBS, type ShipmentJob, type TimerJob } from "./jobs";
 
 async function main() {
-  const boss = new PgBoss(env("DATABASE_URL"));
+  const boss = new PgBoss(pgUrl(env("DATABASE_URL")));
   boss.on("error", (err) => console.error("[worker] pg-boss error", err));
   await boss.start();
 

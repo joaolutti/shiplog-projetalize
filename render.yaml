@@ -35,8 +35,9 @@ services:
         sync: false
       - key: GITLAB_MEMBERSHIP_PROJECT
         sync: false
+      # The existing webhook's secret: production reuses the dev webhook, moved to the production URL.
       - key: GITLAB_WEBHOOK_SECRET
-        generateValue: true
+        sync: false
       - key: GITLAB_API_TOKEN
         sync: false
       - key: GITLAB_OAUTH_CLIENT_ID
