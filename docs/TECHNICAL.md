@@ -388,12 +388,14 @@ Queues retry five times with exponential backoff, so a Slack or GitLab hiccup do
 
 ## Deployment
 
-`render.yaml` describes the production setup on Render: the web service and the worker built from the same
-`Dockerfile` (`bun run start` and `bun run worker`), a managed Postgres, and a shared secret env group.
+v1 runs on free plans (D56): one Render web service built from the `Dockerfile`, whose start script
+(`scripts/start.sh`) runs the migrations and then the worker and the web app side by side; a Supabase Postgres;
+OpenRouter's free model; and a 10-minute keep-alive ping, because a free Render service sleeps when idle and Slack
+expects answers within 3 seconds. `render.yaml` is the blueprint, `docs/slack-manifest.yaml` creates the production
+Slack app, and [DEPLOY.md](./DEPLOY.md) is the step-by-step guide.
 
-Before the first deploy:
-- Add `LLM_ENABLED`, `LLM_MODEL` and `GITLAB_MEMBERSHIP_PROJECT` to the blueprint.
-- Point the Slack app (redirect URL, interactivity, events) and the GitLab webhook at the production URL, and leave
-  `SLACK_DM_ALLOWLIST` empty.
-- Check the Render plan: background workers and long-lived databases aren't part of Render's free tier, so at least
-  the worker and the database likely need a paid instance. Confirm against Render's current pricing.
+Moving to paid plans later is a configuration change: `bun run start` and `bun run worker` also run as separate
+services, and `DATABASE_URL` can point at any Postgres.
+
+CI (GitHub Actions, `.github/workflows/ci.yml`) runs lint, typecheck, the tests against a Postgres service, and the
+production build on every pull request and push to `main`.
