@@ -7,7 +7,8 @@ import * as schema from "./schema";
 let instance: ReturnType<typeof create> | undefined;
 
 function create() {
-  const sql = postgres(env("DATABASE_URL"), { max: 10 });
+  // 5 + the job queue's 2 + the worker's 3 stay under Supabase's 15 pooled clients (D56); idle ones close.
+  const sql = postgres(env("DATABASE_URL"), { max: 5, idle_timeout: 20 });
   return drizzle(sql, { schema });
 }
 

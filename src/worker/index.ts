@@ -23,7 +23,8 @@ import {
 import { JOBS, type ShipmentJob, type TimerJob } from "./jobs";
 
 async function main() {
-  const boss = new PgBoss(pgUrl(env("DATABASE_URL")));
+  // Small pool: Supabase's session pooler allows 15 clients across the web app and the worker (D56).
+  const boss = new PgBoss({ connectionString: pgUrl(env("DATABASE_URL")), max: 3 });
   boss.on("error", (err) => console.error("[worker] pg-boss error", err));
   await boss.start();
 
