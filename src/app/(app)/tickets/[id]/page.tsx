@@ -1,7 +1,6 @@
 /**
  * Ticket page (M4): the GitLab issue, each shipment (per branch) with its notes, MRs and
- * verification, the ticket's discussion thread (D13), and its history. Weight reviews show for
- * dev and lead only (D23).
+ * verification, the ticket's discussion thread (D13), and its history.
  */
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -32,7 +31,7 @@ async function Ticket({ params }: Pick<PageProps<"/tickets/[id]">, "params">) {
 
   const published = t.shipments.filter((s) => s.status === "published");
   const inProgress = t.shipments.filter((s) => s.status !== "published");
-  // Repo, MRs, weight and GitLab links are for devs and leads; members can't act on them.
+  // Repo, MRs and GitLab links are for devs and leads; members can't act on them.
   const tech = viewer.role !== "member";
 
   return (
@@ -80,7 +79,6 @@ async function Ticket({ params }: Pick<PageProps<"/tickets/[id]">, "params">) {
                 </div>
               )}
             </dl>
-            {published.length > 0 && <Track shipments={published} />}
           </div>
         </div>
       </section>
@@ -98,30 +96,10 @@ async function Ticket({ params }: Pick<PageProps<"/tickets/[id]">, "params">) {
           <Discussion ticket={t} />
         </div>
         <aside className="col" aria-label="Detalhes">
-          {tech && <WeightPanel ticket={t} />}
           <History ticket={t} />
         </aside>
       </section>
     </>
-  );
-}
-
-// Staging → Main promotion, from the branches that have published.
-function Track({ shipments }: { shipments: TicketShipment[] }) {
-  const branches = [...new Set([...["Staging", "Main"], ...shipments.map((s) => s.branch ?? "")])].filter(Boolean);
-  const done = (b: string) => shipments.some((s) => s.branch?.toLowerCase() === b.toLowerCase());
-  return (
-    <div className="track" aria-label="Promoção entre branches">
-      {branches.map((b, i) => (
-        <span key={b} style={{ display: "contents" }}>
-          {i > 0 && <span className={`line ${done(b) ? "ok" : ""}`} />}
-          <span className={`step ${done(b) ? "ok" : ""}`}>
-            <span className="num">{done(b) ? <Icon name="check" /> : i + 1}</span>
-            {b}
-          </span>
-        </span>
-      ))}
-    </div>
   );
 }
 
@@ -232,40 +210,6 @@ function ShipmentBox({ shipment: s, viewer }: { shipment: TicketShipment; viewer
           {s.publishedVia === "auto" ? "Publicado automaticamente 24 h após o rascunho" : "Publicado com confirmação do dev"}
         </span>
         {viewer.role !== "member" && <span>Shiplog #{s.id}</span>}
-      </div>
-    </section>
-  );
-}
-
-function WeightPanel({ ticket: t }: { ticket: TicketDetail }) {
-  return (
-    <section className="box" aria-labelledby="w-h">
-      <div className="box-h">
-        <h2 id="w-h">Segunda opinião de peso</h2>
-        <span className="label" style={{ height: 22, fontSize: 10 }}>
-          V1.5
-        </span>
-        <span className="muted" style={{ marginLeft: "auto", fontSize: 12 }}>
-          <Icon name="lock" /> Só devs e líderes
-        </span>
-      </div>
-      <div className="box-b">
-        {t.weightReviews.length ? (
-          t.weightReviews.map((w) => (
-            <div key={w.id}>
-              <div className="tab" style={{ fontSize: 16 }}>
-                {w.branch}: atribuído {w.assignedWeight ?? "—"} → Shiplog {w.suggestedWeight}
-              </div>
-              <p className="muted" style={{ margin: "6px 0 0" }}>
-                {w.rationale}
-              </p>
-            </div>
-          ))
-        ) : (
-          <p className="muted" style={{ margin: 0 }}>
-            A revisão de peso chega na versão 1.5.
-          </p>
-        )}
       </div>
     </section>
   );
