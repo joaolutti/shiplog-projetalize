@@ -303,7 +303,8 @@ export async function editNotes(
       timeline: [...shipment.timeline, timelineEntry("notes_edited", { by: actorId(args.actor), previous: shipment.notesFinal ?? shipment.notesDraft })],
     })
     .where(eq(shipments.id, shipment.id));
-  return { kind: "refresh", shipmentId: shipment.id };
+  // Published: the publish job edits the channel card and both DMs in place.
+  return { kind: shipment.status === "published" ? "published" : "refresh", shipmentId: shipment.id };
 }
 
 // The dev picks the requester when the Solicitante name didn't match one Slack user.

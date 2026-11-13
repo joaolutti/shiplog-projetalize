@@ -7,6 +7,7 @@ import {
   getIssue,
   getMergeRequestStats,
   getRelatedMergeRequests,
+  mergeRequestRefs,
 } from "@/lib/gitlab/client";
 import issueFixture from "./fixtures/gitlab/issue.json";
 import relatedFixture from "./fixtures/gitlab/related_merge_requests.json";
@@ -122,10 +123,40 @@ describe("getRelatedMergeRequests", () => {
     routes[`${path}?page=2`] = { body: [relatedFixture[1]] };
     const mrs = await getRelatedMergeRequests(501, 12);
     expect(mrs.map((m) => m.iid)).toEqual([45, 46]);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    const pages = fetchMock.mock.calls.map(([input]) => new URL(String(input)).searchParams);
+    const calls = fetchMock.mock.calls.map(([input]) => new URL(String(input))).filter((u) => u.pathname === path);
+    expect(calls).toHaveLength(2);
+    const pages = calls.map((u) => u.searchParams);
     expect(pages.map((p) => p.get("page"))).toEqual(["1", "2"]);
     expect(pages.every((p) => p.get("per_page") === "100")).toBe(true);
+  });
+
+  it("adds MRs referenced in the issue's comments, skipping unreadable and repeated ones", async () => {
+    routes["/api/v4/projects/501/issues/12/related_merge_requests"] = { body: [relatedFixture[0]] };
+    routes["/api/v4/projects/501/issues/12/notes"] = {
+      body: [
+        { system: false, body: "acme/sub/api!45 e acme/back!132" },
+        { system: false, body: "Ver https://gitlab.example.com/acme/back/-/merge_requests/132 e !46" },
+        { system: false, body: "secret/proj!9" },
+        { system: true, body: "mentioned in acme/other!1" },
+      ],
+    };
+    const back = { ...relatedFixture[0], id: 4001, iid: 132, project_id: 900, references: { full: "acme/back!132" } };
+    routes["/api/v4/projects/acme%2Fback/merge_requests/132"] = { body: back };
+    routes["/api/v4/projects/501/merge_requests/46"] = { body: relatedFixture[1] };
+    const mrs = await getRelatedMergeRequests(501, 12);
+    expect(mrs.map((m) => `${m.projectPath}!${m.iid}`)).toEqual(["acme/sub/api!45", "acme/back!132", "acme/app!46"]);
+  });
+});
+
+describe("mergeRequestRefs", () => {
+  it("reads full refs, short refs and MR URLs, but not issue refs or words", () => {
+    expect(
+      mergeRequestRefs("p1429/modules/api!132, !7, Feito! 8, acme/app#12, https://gitlab.com/a/b/-/merge_requests/3"),
+    ).toEqual([
+      { project: "a/b", iid: 3 },
+      { project: "p1429/modules/api", iid: 132 },
+      { project: null, iid: 7 },
+    ]);
   });
 });
 

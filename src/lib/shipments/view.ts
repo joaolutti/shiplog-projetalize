@@ -43,6 +43,7 @@ export async function loadShipment(shipmentId: number): Promise<LoadedShipment |
       branch: s.branch,
       notes: s.notesFinal ?? s.notesDraft,
       publishedVia: s.publishedVia,
+      publishedAt: s.publishedAt,
       url: `${env("APP_URL").replace(/\/+$/, "")}/tickets/${t.id}`,
       ticket: {
         iid: t.iid,
@@ -51,6 +52,7 @@ export async function loadShipment(shipmentId: number): Promise<LoadedShipment |
         projectPath: t.projectPath,
         nativeWeight: t.nativeWeight,
         labelWeight: t.labelWeight,
+        hubspotUrls: t.hubspotUrls,
       },
       requester: t.requesterSlackId
         ? { kind: "resolved", slackUserId: t.requesterSlackId }

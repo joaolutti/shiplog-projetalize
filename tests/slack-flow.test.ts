@@ -218,6 +218,16 @@ describe.skipIf(!hasDb)("buttons and modals", () => {
     expect(jobNames()).toEqual(["sync-recipient-dm"]);
   });
 
+  it("Editar notas after publishing updates the channel card", async () => {
+    const s = await seed();
+    await db().update(shipments).set({ status: "published", publishedVia: "confirmed", feedMessageTs: "9" }).where(eq(shipments.id, s.id));
+    await handleInteraction(submit("U_DEV", MODALS.editNotes, s.id, "Login com SSO voltou a funcionar."));
+    expect(jobNames()).toEqual(["publish-shipment"]);
+    slackApi.sent = [];
+    await publishShipment({ shipmentId: s.id });
+    expect(slackApi.sent.map((m) => m.kind + ":" + m.to)).toContain("update:C_FEED/9");
+  });
+
   it("the dev picks the requester when the name wasn't found", async () => {
     const s = await seed();
     await handleInteraction(

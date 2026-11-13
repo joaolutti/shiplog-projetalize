@@ -23,7 +23,6 @@ const SAMPLES: Array<{ title: string; payload: object; modal?: boolean }> = [
   { title: "Rascunho (DM do dev)", payload: recipientDm(FIXTURES.draft, opts) },
   { title: "Rascunho: solicitante não encontrado", payload: recipientDm(FIXTURES.draftUnresolvedRequester, opts) },
   { title: "Rascunho: peso diferente do rótulo", payload: recipientDm(FIXTURES.draftWeightMismatch, opts) },
-  { title: "Rascunho: pessoas marcadas", payload: recipientDm(FIXTURES.draftWithMentions, opts) },
   { title: "Sem branch", payload: recipientDm(FIXTURES.needsBranch, opts) },
   { title: "MRs abertos", payload: recipientDm(FIXTURES.openMrs, opts) },
   { title: "Aguardando merge", payload: recipientDm(FIXTURES.held, opts) },

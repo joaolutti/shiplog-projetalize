@@ -97,4 +97,14 @@ describe("extractHubspotUrls", () => {
       "Ticket https://app.hubspot.com/contacts/123/ticket/456 e (https://app.hubspot.com/contacts/123/ticket/456)";
     expect(extractHubspotUrls(text)).toEqual(["https://app.hubspot.com/contacts/123/ticket/456"]);
   });
+
+  it("keeps only the card link from the template, never the attachment", () => {
+    const text = [
+      "- Anexos: https://app.hubspot.com/file-preview/475/file/2269/",
+      "- Link do card no Hubspot: `https://app.hubspot.com/contacts/475/record/0-5/509`",
+      "- Outro: https://app.hubspot.com/contacts/475/record/0-5/111",
+    ].join("\n\n");
+    expect(extractHubspotUrls(text)).toEqual(["https://app.hubspot.com/contacts/475/record/0-5/509"]);
+    expect(extractHubspotUrls("Anexos: https://app.hubspot.com/file-preview/475/file/2269/")).toEqual([]);
+  });
 });

@@ -80,11 +80,23 @@ describe("Block Kit messages", () => {
     expect(JSON.stringify(recipientDm(FIXTURES.draft, opts).blocks)).not.toContain(ACTIONS.pickRequester);
   });
 
-  it("the draft offers the mention picker, pre-filled; the card and published DM tag them", () => {
-    expect(JSON.stringify(recipientDm(FIXTURES.draft, opts).blocks)).toContain(ACTIONS.pickMentions);
-    expect(JSON.stringify(recipientDm(FIXTURES.draftWithMentions, opts).blocks)).toContain('"initial_users":["U0QA","U0PM"]');
-    expect(JSON.stringify(feedCard(FIXTURES.published).blocks)).toContain("cc <@U0QA>");
-    expect(JSON.stringify(feedCard(FIXTURES.publishedAuto).blocks)).not.toContain("cc ");
+  it("the draft has a single people picker, and only when the requester wasn't found", () => {
+    expect(JSON.stringify(recipientDm(FIXTURES.draft, opts).blocks)).not.toContain("users_select");
+    const unresolved = JSON.stringify(recipientDm(FIXTURES.draftUnresolvedRequester, opts).blocks);
+    expect(unresolved.match(/users_select/g)).toHaveLength(1);
+  });
+
+  it("posts in the team's format: greeting by the hour, a square per branch, issue and HubSpot links", () => {
+    const text = (v: typeof FIXTURES.published) => JSON.stringify(feedCard(v).blocks);
+    expect(text(FIXTURES.published)).toContain("Boa noite, pessoal!");
+    expect(text(FIXTURES.published)).toContain(":large_yellow_square: Saindo ajuste para STAGING:");
+    expect(text({ ...FIXTURES.published, branch: "Main", publishedAt: new Date("2026-10-03T12:00:00Z") })).toMatch(
+      /Bom dia, pessoal!.*:large_blue_square: Saindo ajuste para MAIN:/,
+    );
+    expect(text({ ...FIXTURES.published, publishedAt: new Date("2026-10-03T17:00:00Z") })).toContain("Boa tarde");
+    expect(text(FIXTURES.published)).toContain(
+      ":fire: <https://gitlab.com/acme/billing-svc/-/issues/412|#412> - <https://app.hubspot.com/contacts/123/record/0-5/456|Hubspot> - Corrigir login com SSO",
+    );
   });
 
   it("keeps every section under Slack's 3000-character limit and the edit modal under its max_length", () => {

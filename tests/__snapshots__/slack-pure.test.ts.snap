@@ -31,23 +31,6 @@ exports[`Block Kit messages > matches the snapshots 1`] = `
         "type": "section",
       },
       {
-        "accessory": {
-          "action_id": "shipment.pick_mentions",
-          "placeholder": {
-            "text": "Escolher pessoas",
-            "type": "plain_text",
-          },
-          "type": "multi_users_select",
-        },
-        "block_id": "mentions:7",
-        "text": {
-          "text": "*Marcar no anúncio*
-Quem mais deve ser marcado no card do canal?",
-          "type": "mrkdwn",
-        },
-        "type": "section",
-      },
-      {
         "block_id": "draft",
         "elements": [
           {
@@ -141,23 +124,6 @@ Quem mais deve ser marcado no card do canal?",
         "type": "section",
       },
       {
-        "accessory": {
-          "action_id": "shipment.pick_mentions",
-          "placeholder": {
-            "text": "Escolher pessoas",
-            "type": "plain_text",
-          },
-          "type": "multi_users_select",
-        },
-        "block_id": "mentions:7",
-        "text": {
-          "text": "*Marcar no anúncio*
-Quem mais deve ser marcado no card do canal?",
-          "type": "mrkdwn",
-        },
-        "type": "section",
-      },
-      {
         "block_id": "draft",
         "elements": [
           {
@@ -244,23 +210,6 @@ Quem mais deve ser marcado no card do canal?",
         "type": "context",
       },
       {
-        "accessory": {
-          "action_id": "shipment.pick_mentions",
-          "placeholder": {
-            "text": "Escolher pessoas",
-            "type": "plain_text",
-          },
-          "type": "multi_users_select",
-        },
-        "block_id": "mentions:7",
-        "text": {
-          "text": "*Marcar no anúncio*
-Quem mais deve ser marcado no card do canal?",
-          "type": "mrkdwn",
-        },
-        "type": "section",
-      },
-      {
         "block_id": "draft",
         "elements": [
           {
@@ -313,8 +262,16 @@ Quem mais deve ser marcado no card do canal?",
     "blocks": [
       {
         "text": {
-          "text": ":ship: *Entregue em Staging*
-<https://gitlab.com/acme/billing-svc/-/issues/412|#412 Corrigir login com SSO> (<@U0REQUESTER>)",
+          "text": "Boa noite, pessoal!
+
+:large_yellow_square: Saindo ajuste para STAGING:",
+          "type": "mrkdwn",
+        },
+        "type": "section",
+      },
+      {
+        "text": {
+          "text": ":fire: <https://gitlab.com/acme/billing-svc/-/issues/412|#412> - <https://app.hubspot.com/contacts/123/record/0-5/456|Hubspot> - Corrigir login com SSO",
           "type": "mrkdwn",
         },
         "type": "section",
@@ -328,13 +285,11 @@ Quem mais deve ser marcado no card do canal?",
         "type": "section",
       },
       {
-        "elements": [
-          {
-            "text": "cc <@U0QA>",
-            "type": "mrkdwn",
-          },
-        ],
-        "type": "context",
+        "text": {
+          "text": "Verificar e dar um positivo aqui :white_check_mark:",
+          "type": "mrkdwn",
+        },
+        "type": "section",
       },
       {
         "block_id": "feed",
@@ -353,14 +308,22 @@ Quem mais deve ser marcado no card do canal?",
         "type": "actions",
       },
     ],
-    "text": "Entregue em Staging: #412 Corrigir login com SSO",
+    "text": ":large_yellow_square: Saindo ajuste para STAGING: #412 Corrigir login com SSO",
   },
   "feedCardAuto": {
     "blocks": [
       {
         "text": {
-          "text": ":ship: *Entregue em Staging*
-<https://gitlab.com/acme/billing-svc/-/issues/412|#412 Corrigir login com SSO>",
+          "text": "Boa noite, pessoal!
+
+:large_yellow_square: Saindo ajuste para STAGING:",
+          "type": "mrkdwn",
+        },
+        "type": "section",
+      },
+      {
+        "text": {
+          "text": ":fire: <https://gitlab.com/acme/billing-svc/-/issues/412|#412> - <https://app.hubspot.com/contacts/123/record/0-5/456|Hubspot> - Corrigir login com SSO",
           "type": "mrkdwn",
         },
         "type": "section",
@@ -369,6 +332,13 @@ Quem mais deve ser marcado no card do canal?",
         "text": {
           "text": "> Corrige o login com SSO para clientes enterprise.
 > O botão "Entrar" volta a funcionar no Safari.",
+          "type": "mrkdwn",
+        },
+        "type": "section",
+      },
+      {
+        "text": {
+          "text": "Verificar e dar um positivo aqui :white_check_mark:",
           "type": "mrkdwn",
         },
         "type": "section",
@@ -399,7 +369,7 @@ Quem mais deve ser marcado no card do canal?",
         "type": "actions",
       },
     ],
-    "text": "Entregue em Staging: #412 Corrigir login com SSO",
+    "text": ":large_yellow_square: Saindo ajuste para STAGING: #412 Corrigir login com SSO",
   },
   "held": {
     "blocks": [

@@ -79,9 +79,12 @@ export function parseDeliveryNotes(description: string | null | undefined): stri
   return text === "" ? null : text;
 }
 
-// HubSpot links referenced in an issue (displayed only; no HubSpot integration).
+// HubSpot links in an issue (displayed only; no HubSpot integration). The template's "Link do card
+// no Hubspot" line wins; attachments (file previews) are never linked.
 export function extractHubspotUrls(description: string | null | undefined): string[] {
   if (!description) return [];
-  const urls = description.match(/https?:\/\/[\w.-]*hubspot\.com\/[^\s)>\]"']*/gi) ?? [];
-  return [...new Set(urls)];
+  const find = (text: string) =>
+    [...new Set(text.match(/https?:\/\/[\w.-]*hubspot\.com\/[^\s)>\]"'`]*/gi) ?? [])].filter((u) => !/\/file-preview\//i.test(u));
+  const card = find(description.match(/^.*card no hubspot.*$/im)?.[0] ?? "");
+  return card.length ? card : find(description);
 }

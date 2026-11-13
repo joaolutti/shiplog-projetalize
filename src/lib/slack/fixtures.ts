@@ -7,6 +7,8 @@ const base: ShipmentView = {
   branch: "Staging",
   notes: "Corrige o login com SSO para clientes enterprise.\nO botão \"Entrar\" volta a funcionar no Safari.",
   publishedVia: null,
+  // 19:30 in São Paulo: "Boa noite".
+  publishedAt: new Date("2026-10-03T22:30:00Z"),
   url: "https://shiplog.example.com/tickets/3",
   ticket: {
     iid: 412,
@@ -15,6 +17,7 @@ const base: ShipmentView = {
     projectPath: "acme/billing-svc",
     nativeWeight: 3,
     labelWeight: 3,
+    hubspotUrls: ["https://app.hubspot.com/contacts/123/record/0-5/456"],
   },
   requester: { kind: "resolved", slackUserId: "U0REQUESTER" },
   mergeRequests: [
@@ -37,7 +40,6 @@ export const FIXTURES = {
     ],
   },
   held: { ...base, status: "held" },
-  draftWithMentions: { ...base, mentions: ["U0QA", "U0PM"] },
   published: { ...base, status: "published", publishedVia: "confirmed", mentions: ["U0QA"] },
   publishedAuto: { ...base, status: "published", publishedVia: "auto", requester: { kind: "none" } },
 } satisfies Record<string, ShipmentView>;

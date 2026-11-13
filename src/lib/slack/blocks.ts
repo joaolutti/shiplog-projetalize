@@ -6,6 +6,7 @@
  * so they're snapshot-tested and shown in /dev/slack-preview without Slack.
  */
 import type { ActionsBlock, Button, KnownBlock, ModalView } from "@slack/types";
+import { TZ } from "@/lib/dates";
 import type { SlackMessage } from "./client";
 
 export const ACTIONS = {
@@ -40,6 +41,7 @@ export type ModalId = (typeof MODALS)[keyof typeof MODALS];
 
 // Block ID prefixes of the pickers in the draft DM (select menus carry no value of their own).
 export const REQUESTER_BLOCK = "requester:";
+// No longer sent; drafts already in DMs still carry the "Marcar no anúncio" picker.
 export const MENTIONS_BLOCK = "mentions:";
 
 // Field IDs inside the modals (block_id and action_id).
@@ -51,6 +53,7 @@ export interface ShipmentView {
   branch: string | null;
   notes: string | null;
   publishedVia: "confirmed" | "auto" | null;
+  publishedAt: Date | null;
   // Page on the web app.
   url: string;
   ticket: {
@@ -60,6 +63,7 @@ export interface ShipmentView {
     projectPath: string;
     nativeWeight: number | null;
     labelWeight: number | null;
+    hubspotUrls: string[];
   };
   requester:
     | { kind: "none" }
@@ -226,18 +230,6 @@ function draftDm(v: ShipmentView, autoPublishHours: number): SlackMessage {
     });
   }
 
-  blocks.push({
-    type: "section",
-    block_id: `${MENTIONS_BLOCK}${v.id}`,
-    text: { type: "mrkdwn", text: "*Marcar no anúncio*\nQuem mais deve ser marcado no card do canal?" },
-    accessory: {
-      type: "multi_users_select",
-      action_id: ACTIONS.pickMentions,
-      placeholder: { type: "plain_text", text: "Escolher pessoas" },
-      ...(v.mentions.length ? { initial_users: v.mentions } : {}),
-    },
-  });
-
   blocks.push(
     actions("draft", [
       button("Confirmar e publicar", ACTIONS.confirmPublish, String(v.id), "primary"),
@@ -277,16 +269,27 @@ export function reminderReply(v: ShipmentView, hoursLeft: number): SlackMessage 
 
 // ── Published: channel card and requester DM ─────────────────────────
 
-// Read-only card in the existing channel (D9): today's format, plus "Abrir no Shiplog".
+// "Bom dia" / "Boa tarde" / "Boa noite", by the hour in São Paulo.
+function greeting(at: Date): string {
+  const hour = Number(new Intl.DateTimeFormat("en-US", { hour: "numeric", hourCycle: "h23", timeZone: TZ }).format(at));
+  return hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
+}
+
+const SQUARES: Record<string, string> = { main: ":large_blue_square:", staging: ":large_yellow_square:" };
+
+// Read-only card in the existing channel (D9), in the team's announcement format, plus "Abrir no Shiplog".
 export function feedCard(v: ShipmentView): SlackMessage {
-  const requester = v.requester.kind === "resolved" ? ` (<@${v.requester.slackUserId}>)` : "";
+  const branch = v.branch ?? "?";
+  const square = SQUARES[branch.toLowerCase()] ?? ":white_large_square:";
+  const links = [`<${v.ticket.webUrl}|#${v.ticket.iid}>`, ...v.ticket.hubspotUrls.map((url) => `<${url}|Hubspot>`)];
   const unconfirmed = v.publishedVia === "auto" ? [context(":warning: Notas não confirmadas pelo dev.")] : [];
   return {
-    text: `Entregue em ${v.branch}: #${v.ticket.iid} ${v.ticket.title}`,
+    text: `${square} Saindo ajuste para ${branch.toUpperCase()}: #${v.ticket.iid} ${v.ticket.title}`,
     blocks: [
-      section(`:ship: *Entregue em ${esc(v.branch ?? "?")}*\n${issueLink(v)}${requester}`),
+      section(`${greeting(v.publishedAt ?? new Date())}, pessoal!\n\n${square} Saindo ajuste para ${esc(branch.toUpperCase())}:`),
+      section(`:fire: ${links.join(" - ")} - ${esc(v.ticket.title)}`),
       ...(v.notes ? [section(quote(v.notes))] : []),
-      ...(mentionsText(v) ? [context(mentionsText(v)!)] : []),
+      section("Verificar e dar um positivo aqui :white_check_mark:"),
       ...unconfirmed,
       actions("feed", [linkButton("Abrir no Shiplog", v.url)]),
     ],

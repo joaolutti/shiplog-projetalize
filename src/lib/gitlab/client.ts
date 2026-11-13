@@ -129,15 +129,8 @@ function projectPathFromReference(full: string): string {
   return bang === -1 ? full : full.slice(0, bang);
 }
 
-// GET /projects/:id/issues/:iid/related_merge_requests: cross-project.
-export async function getRelatedMergeRequests(
-  projectId: number,
-  issueIid: number,
-): Promise<RelatedMergeRequest[]> {
-  const raw = await getAllPages<RawMergeRequest>(
-    `/projects/${enc(projectId)}/issues/${enc(issueIid)}/related_merge_requests`,
-  );
-  return raw.map((mr) => ({
+function toMergeRequest(mr: RawMergeRequest): RelatedMergeRequest {
+  return {
     id: mr.id,
     iid: mr.iid,
     projectId: mr.project_id,
@@ -149,7 +142,57 @@ export async function getRelatedMergeRequests(
     authorId: mr.author.id,
     targetBranch: mr.target_branch,
     mergedAt: mr.merged_at ?? null,
-  }));
+  };
+}
+
+/**
+ * MRs referenced in a comment: "group/proj!12", "!12" (the issue's own project) or an MR URL.
+ * `project` is a path, or null for the issue's project.
+ */
+export function mergeRequestRefs(body: string): Array<{ project: string | null; iid: number }> {
+  const refs: Array<{ project: string | null; iid: number }> = [];
+  for (const m of body.matchAll(/https?:\/\/[^\s/]+\/([\w.\-/]+?)\/-\/merge_requests\/(\d+)/g)) {
+    refs.push({ project: m[1], iid: Number(m[2]) });
+  }
+  for (const m of body.matchAll(/(?<![\w/])([\w.-]+(?:\/[\w.-]+)+)?!(\d+)\b/g)) {
+    refs.push({ project: m[1] ?? null, iid: Number(m[2]) });
+  }
+  return refs;
+}
+
+/**
+ * GET /projects/:id/issues/:iid/related_merge_requests (cross-project), plus MRs referenced in
+ * the issue's comments: the team links MRs in (internal) comments, and related_merge_requests
+ * only lists MRs that mention the issue. A reference the token can't read is skipped.
+ */
+export async function getRelatedMergeRequests(
+  projectId: number,
+  issueIid: number,
+): Promise<RelatedMergeRequest[]> {
+  const related = (
+    await getAllPages<RawMergeRequest>(`/projects/${enc(projectId)}/issues/${enc(issueIid)}/related_merge_requests`)
+  ).map(toMergeRequest);
+
+  const notes = await getAllPages<{ body: string; system: boolean }>(
+    `/projects/${enc(projectId)}/issues/${enc(issueIid)}/notes`,
+  ).catch(() => []);
+  const seen = new Set(related.map((mr) => `${mr.projectPath}!${mr.iid}`.toLowerCase()));
+  const extra: RelatedMergeRequest[] = [];
+  for (const ref of notes.filter((n) => !n.system).flatMap((n) => mergeRequestRefs(n.body))) {
+    if (ref.project && seen.has(`${ref.project}!${ref.iid}`.toLowerCase())) continue;
+    try {
+      const mr = toMergeRequest(
+        await getJson<RawMergeRequest>(`/projects/${enc(ref.project ?? projectId)}/merge_requests/${enc(ref.iid)}`),
+      );
+      const key = `${mr.projectPath}!${mr.iid}`.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      extra.push(mr);
+    } catch (err) {
+      console.warn(`[gitlab] MR ${ref.project ?? projectId}!${ref.iid} in a comment on #${issueIid} unreadable`, err);
+    }
+  }
+  return [...related, ...extra];
 }
 
 export interface MergeRequestStats {
