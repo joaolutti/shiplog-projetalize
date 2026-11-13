@@ -4,7 +4,7 @@
 # and Render restarts it, so a crashed worker can't go unnoticed behind a healthy web app.
 set -euo pipefail
 
-bun run db:migrate
+bun run scripts/migrate.ts
 bun run worker &
 bun run start &
 wait -n

@@ -16,6 +16,8 @@ function boss(): Promise<PgBoss> {
   g.__shiplogBoss ??= (async () => {
     const instance = new PgBoss({
       connectionString: pgUrl(env("DATABASE_URL")),
+      // Only sends jobs. Pools stay small: Supabase's session pooler allows 15 clients in all (D56).
+      max: 2,
       supervise: false,
       schedule: false,
     });
