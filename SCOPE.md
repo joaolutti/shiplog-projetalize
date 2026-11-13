@@ -32,11 +32,15 @@ The process works, but:
 - A **web app** is the permanent record: a feed of shipped work, a page per ticket, a discussion thread, and verification status.
 - **Anyone** in the company can verify a shipment or report a problem. Everyone signs in with Slack and nothing else.
 - The existing Slack channel stays, as a **read-only feed** of published shipments.
+- **LLM-drafted shipping notes** (D50): the channel text is written from the issue, the way the team's
+  `pdz-generate-slack-communication` skill does it, and the dev confirms or edits it in the DM.
+- Strict, per-repo control over what is sent to a model, with an audit trail.
 
-### Goals (v1.5)
+### Next steps (after v1)
+Both wait on a **group** access token, which we don't have (D51). The current token only reads `p1429/predialize`.
 - An **LLM second opinion on weight**, compared against the weight assigned up front. "No change" is a valid outcome.
-- LLM-drafted shipping notes.
-- Strict, per-repo control over what source code is sent to a model, with an audit trail.
+- **MR visibility**: MRs, repositories and line counts for MRs in other repos (most of them live under
+  `p1429/modules/…`). MRs in `p1429/predialize` itself are already read.
 
 ### Non-goals
 - **Not a second issue tracker.** GitLab stays the source of truth. Shiplog reads GitLab and never writes to it (v1/v1.5).
@@ -68,7 +72,8 @@ GitLab: "Development: Done" label added, or Status moved to Done / Deployed Main
    │           return 200 immediately, enqueue job
    ▼
 [2] Ingest ── upsert ticket; read "Branch: *", "Weight: *" labels + native weight
-   │          fetch related MRs (cross-project) via the GitLab API
+   │          fetch related MRs (cross-project) via the GitLab API, plus MRs referenced
+   │          in the issue's comments (D48)
    │          upsert shipment, unique on (ticket, branch)
    │          gates run in this order (D40):
    │
@@ -89,7 +94,7 @@ GitLab: "Development: Done" label added, or Status moved to Done / Deployed Main
    ▼
 [4] Publish
       ├── web app feed + ticket page
-      ├── read-only card in the channel with [Open in Shiplog]
+      ├── read-only card in the channel, in the team's format (D49), with [Open in Shiplog]
       └── DM the requester: "Your fix shipped to Staging" [Verify] [Open]
    ▼
 [5] Verify (anyone, in the web app or from the requester DM)
@@ -134,7 +139,7 @@ and Slack handlers call the same commands.
 | Branch | `Branch: <name>` label |
 | Issue #, link, title | Webhook payload |
 | Requester @mention | An optional `Solicitante: <name>` line in the GitLab issue template → matched against the Slack directory (D16 revised) |
-| Description of what was made | v1: the `## Notas de entrega` section of the MR template, falling back to the MR title. v1.5: LLM draft |
+| Description of what was made | LLM draft from the issue title and description, plus each readable MR's `## Notas de entrega` (or title) (D50). Without a model, or if the call fails: the MR notes, else the MR title, else the issue title |
 | Verification | Buttons, tracked per user |
 
 **Requester matching (D16 revised):**
@@ -283,8 +288,8 @@ The code is provider-agnostic: the AI SDK with an OpenAI-compatible base URL, co
   waiting for merge, draft) and becomes "publicada" after publishing, so old buttons disappear.
 - **Notes.** The draft comes from `## Notas de entrega` (or the MR title). "Editar notas" replaces it; that text is
   what gets published, and editing after publishing updates the channel card.
-- **Tagging.** The draft DM has a "Marcar no anúncio" people picker; the people chosen are @mentioned on the
-  channel card (and listed on the published DM). The requester is always mentioned.
+- **Requester.** When the `Solicitante` isn't found in Slack, the draft DM asks who it is (the only people picker;
+  "Marcar no anúncio" was removed, D49). The channel card mentions nobody: the requester gets their own DM.
 - **Comments.** "Comentar" adds to the ticket's thread in Shiplog (D13). Comments by anyone other than the recipient
   are echoed as replies in the recipient's DM thread; their own aren't, to keep the thread short. The web thread
   arrives with M4.
@@ -316,9 +321,10 @@ The code is provider-agnostic: the AI SDK with an OpenAI-compatible base URL, co
 | M0 | Scaffold + scope | ✅ This repo |
 | M1 | **Ingest**: webhook receiver, event store, label parsing, ticket/shipment upsert, related MRs, nudge decisions | Applying `Development: Done` on a test issue creates the right shipment (logged, no Slack yet). ✅ Locally with `scripts/fake-gitlab.ts`; a run against a real test project waits on a GitLab token + webhook |
 | M2 | **Identity**: Slack sign-in, GitLab connect, roles | ✅ The owner's account signed in with Slack and linked to GitLab. The rest of the team links when the app goes live (v1) |
-| M3 | **Slack DM flow**: draft DM, edit modal, hold-until-merged, reminder, auto-publish, channel card, requester DM | A full ship happens without anyone typing a message |
-| M4 | **Web app**: feed + filters (date, branch, label, dev, requester, verification), ticket page, thread, verify/report, DM notifications | The team stops using the channel for discussion |
-| M5 (v1.5) | **Weight review**: data policy, redaction, audit log, eval harness → model choice, weight + notes in DM | Eval run reviewed by the leads, model chosen, rollout |
+| M3 | **Slack DM flow**: draft DM, edit modal, hold-until-merged, reminder, auto-publish, channel card, requester DM | A full ship happens without anyone typing a message. ✅ Locally against real GitLab and Slack (2026-11-13) |
+| M4 | **Web app**: feed + filters (date, branch, label, dev, requester, verification), ticket page, thread, verify/report, DM notifications | The team stops using the channel for discussion. ✅ Built; adoption waits on the deploy |
+| M5 | **LLM notes**: data policy, redaction, audit log, notes draft from the issue (D50) | The channel text reads like the team's announcements without the dev rewriting it. ✅ First real draft on #5108 (2026-11-13) |
+| Next | **Weight review** (eval harness → model choice, weight in DM) and **MR visibility** across repos. Both need a group token (D51) | Eval run reviewed by the leads, model chosen, rollout |
 | v2 | Mirror Slack thread replies into the web app, daily digest, "Issue reported" → reopen in GitLab, team-level dashboards, HubSpot links | — |
 
 ## 12. Open items
@@ -333,8 +339,9 @@ The code is provider-agnostic: the AI SDK with an OpenAI-compatible base URL, co
 - [ ] Leads choose the calibration tickets (`config/calibration.yaml`).
 - [x] ~~Add `Solicitante` to the issue template~~: already there, as a table column (read since 2026-11-10).
 - [ ] Add `## Notas de entrega` to the MR template.
-- [ ] Production needs a **group** access token (D29). A project token only sees its own project, so related MRs in
-      other repos come back empty: on `p1429/predialize` every sampled Done issue showed 0 related MRs.
+- [ ] ~~Production needs a **group** access token (D29)~~: not available, so weight review and cross-repo MRs move after v1 (D51). A project token only sees its own project, so MRs in
+      other repos can't be read: #5129's MR (`p1429/modules/backend/api/services/databook!132`, linked in an
+      internal comment, D48) returns 404 with the current `p1429/predialize` token.
 - [x] ~~Visão geral: M4 or v2?~~ M4, as the home page (`/`); Entregas moved to `/feed`.
 - [x] ~~First linked candidate~~: confirmed, and with nobody linked the shipment isn't tracked (D45).
 - [ ] Confirm (implemented this way in M1): an MR closed without merging no longer blocks the hold gate.
@@ -363,4 +370,9 @@ Numbered to continue the decision log in `HANDOFF.md` §3. Where they differ, th
 | D45 | **Only people who connected GitLab.** The recipient is the first candidate in D4 order with GitLab linked; if none is, the shipment isn't created. Replaces D10 (unclaimed queue, leads' DM, "publicar como líder") and the recipient gate of D40 |
 | D46 | **GitLab labels aren't shown in the interface.** They're internal tracking; the branch (Main / Staging) is the only one surfaced, as a tag. Search still matches them |
 | D47 | **Clicking a shipment opens a side panel** (`?s=<shipment>`) with what shipped, verification and the ticket's discussion; "Ver detalhes" opens the ticket page |
+| D48 | **MRs linked in issue comments count as related.** The team links MRs in (often internal) comments, and GitLab's `related_merge_requests` only lists MRs that mention the issue. Ingest also reads `group/proj!N`, `!N` and MR URLs from the issue's non-system notes |
+| D49 | **The channel card follows the team's announcement format**: "Bom dia / Boa tarde / Boa noite, pessoal!" (São Paulo time of publishing), `:large_blue_square:` Main / `:large_yellow_square:` Staging "Saindo ajuste para MAIN:", `:fire: #iid - Hubspot - title`, the notes quoted, "Verificar e dar um positivo aqui ✅", plus [Abrir no Shiplog]. No @mentions; the "Marcar no anúncio" picker is gone. Only the issue's "Link do card no Hubspot" is linked, never attachments |
 | D43 | **Bun** is the package manager, script runner and worker runtime. **Next.js runs on Node 22.** Code under `src/` uses no Bun-only APIs. Replaces "npm + tsx" |
+| D50 | **LLM-drafted notes in v1.** The channel text (the quoted line) is drafted from the issue title and description plus readable MRs' `## Notas de entrega`, with the rules of the team's `pdz-generate-slack-communication` skill (pt-BR, 1–3 sentences, nothing invented). It runs at ingest, behind `LLM_ENABLED`, through the data policy and redaction, and every call is logged in `llm_audit_log` (`purpose = notes_draft`). Any failure falls back to the MR notes / MR title / issue title. The dev still confirms or edits it in the DM |
+| D51 | **No group access token.** We keep the `p1429/predialize` project token, so the weight second opinion and cross-repo MR visibility move to "Next steps (after v1)" |
+| D52 | **v1 runs on an OpenRouter free model** (e.g. `google/gemma-4-31b-it:free`). Free models allow 50 requests/day and we send at most ~15. Many don't support structured outputs, so the draft is plain text, checked for length. A failure or a hit limit falls back to the plain notes. Free endpoints may log prompts, which is acceptable while v1 is a trial: only redacted issue text is sent. A paid model (or a direct Anthropic API key) is one setting away if Shiplog is adopted |

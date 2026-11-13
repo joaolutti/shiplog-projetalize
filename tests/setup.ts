@@ -13,3 +13,5 @@ if (process.env.TEST_DATABASE_URL) process.env.DATABASE_URL = process.env.TEST_D
 else delete process.env.DATABASE_URL;
 
 process.env.GITLAB_WEBHOOK_SECRET = "test-webhook-secret";
+// Never call a real model from tests; tests/notes.test.ts turns it on with a mock model.
+process.env.LLM_ENABLED = "false";

@@ -34,6 +34,7 @@ import {
 import { parseLabels } from "@/lib/gitlab/labels";
 import { extractHubspotUrls, parseDeliveryNotes, parseRequester } from "@/lib/gitlab/templates";
 import { shipChange, shipState, triggerConfig } from "@/lib/gitlab/trigger";
+import { draftNotes } from "@/lib/notes/draft";
 import {
   findBranchless,
   noteOnTicketShipments,
@@ -152,6 +153,13 @@ async function ingestIssueHook(p: IssueHook): Promise<NextStep[]> {
   });
 
   const targets: Array<string | null> = started ? (now.branches.length ? now.branches : [null]) : newBranches;
+  const notes = await draftNotes(
+    {
+      issue: { projectPath: p.project.path_with_namespace, iid, title: issue.title, description: issue.description },
+      mrs: relevantMrs(mrs).map((mr) => ({ ...mr, notes: parseDeliveryNotes(mr.description) })),
+    },
+    fallbackNotes(issue, mrs),
+  );
 
   return db().transaction(async (tx) => {
     const ticket = await upsertTicket(tx, issue, p.project.path_with_namespace, currentStatus);
@@ -168,7 +176,7 @@ async function ingestIssueHook(p: IssueHook): Promise<NextStep[]> {
           recipient,
           mrs,
           stats,
-          notesDraft: notesDraft(issue, mrs),
+          notesDraft: notes,
         }),
       );
     }
@@ -211,9 +219,11 @@ async function upsertTicket(
   return row;
 }
 
-// v1 notes: each MR's "## Notas de entrega", falling back to its title; the issue title if no MRs.
-function notesDraft(issue: GitlabIssue, mrs: RelatedMergeRequest[]): string {
-  const relevant = mrs.filter((mr) => mr.state !== "closed");
+const relevantMrs = (mrs: RelatedMergeRequest[]) => mrs.filter((mr) => mr.state !== "closed");
+
+// Notes without the LLM: each MR's "## Notas de entrega", falling back to its title; the issue title if no MRs.
+function fallbackNotes(issue: GitlabIssue, mrs: RelatedMergeRequest[]): string {
+  const relevant = relevantMrs(mrs);
   if (relevant.length === 0) return issue.title;
   return relevant.map((mr) => parseDeliveryNotes(mr.description) ?? mr.title).join("\n\n");
 }
