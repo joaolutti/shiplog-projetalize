@@ -1,134 +1,111 @@
-# Shiplog
+<p align="center">
+  <img src="public/patch-greeting.svg" alt="Patch, Shiplog's pirate mascot" width="160" />
+</p>
 
-Turns `Development: Done` in GitLab into a published, verifiable, discussable shipment.
-No more hand-written Slack posts.
+<h1 align="center">Shiplog</h1>
 
-**Read [`SCOPE.md`](./SCOPE.md) first.** It has the flow, the decisions and the milestones.
-[`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) has the system design and
-[`docs/SETUP.md`](./docs/SETUP.md) the full local setup.
+<p align="center">
+  <b>Every delivery announced, verified and on record, without anyone writing a Slack post.</b>
+</p>
 
-> Status: M1 (Ingest) done. Entry points for later milestones throw `Not implemented (<milestone>)`.
+Shiplog turns "this issue is done" in GitLab into a delivery announcement the developer only has to confirm. The
+team's Slack channel gets the post in its usual format, and the people who asked for the change are told it
+shipped. A web app keeps the record of what shipped, where, and who checked it.
 
-## Layout
 
-```
-SCOPE.md                     project scope & decisions
-HANDOFF.md                   full context + decision log for a new session
-docs/
-  ARCHITECTURE.md            processes, layers, state machine, ingest pipeline
-  SETUP.md                   local setup on Bun + Node, Next.js 16 notes
-config/
-  data-policy.yaml           per-repo rules for what may be sent to an LLM (v1.5)
-  weight-rubric.md           team weight rubric (inserted into the prompt)
-  calibration.yaml           lead-agreed reference tickets (prompt examples + eval truth)
-src/
-  app/
-    page.tsx                 shipped feed                         (M4)
-    tickets/[id]/page.tsx    ticket page: shipments, verify, thread (M4)
-    settings/page.tsx        Connect GitLab, roles                (M2)
-    api/webhooks/gitlab/     GitLab group webhook                 (M1)
-    api/slack/interactions/  Slack buttons & modals               (M3)
-    api/auth/[...all]/       Better Auth (Slack + GitLab)         (M2)
-    api/health/              Render health check
-  lib/
-    db/                      Drizzle schema (domain + Better Auth) and client
-    gitlab/                  webhook verify, label parsing, read-only API client
-    slack/                   signature verify, Web API client, Block Kit builders
-    shipments/               state machine, commands, ingest, queries, effects
-    weight/                  signals, structured output schema, review (v1.5)
-    policy/                  data policy resolution, redaction (v1.5)
-    llm/                     provider-agnostic model (OpenAI-compatible)
-    auth/                    Better Auth config (M2)
-    env.ts                   typed env (zod)
-  worker/                    pg-boss worker: `bun run worker`
-scripts/
-  link-gitlab.ts             link a GitLab user to a Shiplog user by hand (until M2)
-  replay-event.ts            re-run ingest for a stored gitlab_events row
-  set-role.ts                set a user's role by email (e.g. the first lead)
-  fake-gitlab.ts             local stand-in for the GitLab API (end-to-end runs without a token)
-  eval-weights.ts            compare candidate models on calibration set (v1.5)
-tests/                       behaviour specs as it.todo, filled per milestone
-render.yaml                  Render Blueprint: web + worker + Postgres
+---
+
+## The problem
+
+Every deploy today ends with a developer writing a Slack message by hand: greeting, branch, issue link, HubSpot
+link, title, a sentence on what changed, and a request to check it. That breaks down in predictable ways:
+
+- **It gets skipped or delayed.** It's the last step after the real work, so it waits or never happens.
+- **It's inconsistent.** Some posts say what changed, some repeat the title, links go missing.
+- **Verification gets lost.** A ✅ in a busy channel is the only sign anyone tested it, and nobody can see later
+  what was verified, by whom, or what still waits.
+- **Problems go to the wrong place.** Reports end up in threads and DMs, and the developer hears late, or not at all.
+- **There's no record.** "Did that fix go to production? Did anyone check it?" means scrolling the channel.
+
+## How it works
+
+```mermaid
+flowchart LR
+  A["Dev moves the issue to<br/>Deployed Main / Staging"] --> B["Shiplog reads the issue<br/>and drafts the notes (LLM)"]
+  B --> C["Draft DM to the dev:<br/>confirm, edit or comment"]
+  C -->|confirmed, or 24 h| D["Post in the team channel<br/>+ DM to the requester"]
+  D --> E["Anyone verifies:<br/>✅ in Slack, web or DM"]
+  D --> F["Or reports a problem:<br/>the dev is DMed"]
+  E --> G["Web app: feed, ticket page,<br/>discussion and history"]
+  F --> G
 ```
 
-## Local development
+1. **One step for the developer.** Moving the issue to *Deployed Main* / *Deployed Staging* (or adding the
+   `Development: Done` label) is the trigger. The branch comes from the status, or from a `Branch:` label.
+2. **A draft that writes itself.** Shiplog reads the issue and writes the "what changed" sentence, in the same
+   style as the team's announcements. Personal data and secrets are removed before anything goes to the model.
+3. **The developer stays in control.** The draft arrives as a private Slack DM: confirm, edit the notes, or
+   comment. A reminder comes after 4 h, only during business hours, and it publishes itself after 24 h,
+   flagged as unconfirmed.
+4. **The channel post the team is already familiar with.** "Boa tarde, pessoal!", 🟦 MAIN / 🟨 STAGING, the issue and
+   HubSpot links, the title, the notes quoted, "Verificar e dar um positivo aqui ✅". The person who asked for it
+   gets a DM to verify.
+5. **Verification that counts.** Anyone in the company can verify, by reacting ✅ on the post, clicking
+   *Verificar* on the web, or from their DM. All three record the same verification. Reporting a problem DMs the
+   developer with the comment.
+6. **A permanent record.** The web app has the feed with filters, an overview of the week, a page per ticket with
+   its discussion and history, and a "to verify" queue.
 
-Needs **Bun 1.4.4** (installs, scripts, worker) and **Node 22** (Next.js runs on Node).
-See [`docs/SETUP.md`](./docs/SETUP.md) for details.
+## Screenshots
 
-```bash
-cp .env.example .env
-```
-
-```bash
-docker compose up -d db
-```
-
-```bash
-bun install
-```
-
-```bash
-bun run db:migrate
-```
-
-```bash
-bun run dev
-```
-
-```bash
-bun run worker
-```
-
-After changing `src/lib/db/schema.ts` or `auth-schema.ts`, run `bun run db:generate` and
-commit the new file in `drizzle/`.
-
-### Tests
-
-`bun run test` runs everything. The database tests need `TEST_DATABASE_URL` (see `.env.example`)
-and a database created once with `CREATE DATABASE shiplog_test`; without it they're skipped.
-
-### Running ingest end to end without GitLab
-
-```bash
-bun run scripts/link-gitlab.ts 11 dev.one@example.com "Dev One" dev
-```
-
-```bash
-FAKE_MR_STATE=opened bun run scripts/fake-gitlab.ts
-```
-
-Then start `bun run worker` and the web app with `GITLAB_BASE_URL=http://localhost:4010`,
-`GITLAB_API_TOKEN=fake` and a `GITLAB_WEBHOOK_SECRET`, and POST
-`tests/fixtures/webhooks/issue-done.json` (then `mr-merged.json`) to `/api/webhooks/gitlab` with the
-`X-Gitlab-Token`, `X-Gitlab-Event` and `X-Gitlab-Event-UUID` headers. The worker logs each `NextStep`;
-`bun run scripts/replay-event.ts <id>` re-runs one event.
-
-### Seeing the app as someone else (development)
-
-`http://localhost:3000/dev/as?email=<user email>` signs your browser in as that user without Slack, to check
-roles and pages; `/dev/as` signs out. Only from this machine, never in production or through the tunnel.
-
-### Slack messages
-
-`/dev/slack-preview` (development only) shows every Slack message from fixtures, with a link to open each in
-Slack's Block Kit Builder. While developing against the real workspace, set `SLACK_DM_ALLOWLIST` to your own
-Slack user ID and `SLACK_FEED_CHANNEL_ID` to a test channel.
-
-### Real webhooks
-
-To receive GitLab webhooks and Slack interactions locally, expose port 3000 with a
-tunnel (e.g. `cloudflared tunnel --url http://localhost:3000`) and point a **test**
-project webhook and a dev Slack app at it.
-
-## Scripts
-
-Run with `bun run <script>`.
-
-| Script | |
+| Overview | Deliveries |
 |---|---|
-| `dev` / `build` / `start` | Next.js |
-| `worker` | Background jobs (pg-boss) |
-| `typecheck` / `lint` / `test` | Checks |
-| `db:generate` / `db:migrate` | Drizzle migrations |
-| `eval:weights` | LLM model comparison (v1.5) |
+| ![Overview: this week's deliveries, verification and the latest shipments](docs/images/overview.png) | ![Deliveries: filters and cards, with Patch investigating for bugs](docs/images/feed.png) |
+
+| Side panel | Ticket page |
+|---|---|
+| ![Side panel: what changed, who verified it, and the discussion](docs/images/side-panel.png) | ![Ticket page: the delivery, its verification, discussion and history](docs/images/ticket.png) |
+
+
+## What it does
+
+**For developers**
+- Shipping is the status change they already make; no message to write.
+- An LLM-drafted description they confirm or edit from Slack.
+- Nudges only when something needs them: which branch, MRs still open, a draft waiting.
+
+**For the rest of the company**
+- Sign in with the company Slack account; nothing else to set up.
+- Verify what you tested with a ✅, or report a problem without hunting for the right person.
+- See what shipped this week, what's verified, what's waiting, and what needs attention.
+
+**For leads**
+- One place to see deliveries by status, branch, developer, requester and date.
+- A discussion per ticket, instead of scattered threads.
+- Roles: members see what changed; developers and leads also see project paths and GitLab links.
+
+## Principles
+
+- **GitLab stays the source of truth.** Shiplog only reads it: no comments, no label changes, nothing written back.
+- **No rankings.** No per-developer scores, leaderboards or performance metrics, now or later.
+- **Code stays put.** Diffs are never stored. What goes to the model is the issue text, redacted, under a per-repo
+  policy, and every call is logged.
+- **Slack notifies; the web remembers.** Slack is where people act quickly; the web app is the record.
+
+## Built with
+
+Next.js 16 · Bun · PostgreSQL + Drizzle · pg-boss · Better Auth (Slack sign-in, GitLab connect) · Slack Web and
+Events APIs · GitLab REST API (read-only) · OpenRouter (any OpenAI-compatible model) · Render.
+
+## Documentation
+
+| Document | For |
+|---|---|
+| [Roadmap](docs/ROADMAP.md) | What comes after v1 |
+| [Technical overview](docs/TECHNICAL.md) | Architecture, flows, the LLM pipeline, security and data retention |
+| [Development](docs/DEVELOPMENT.md) | Running it locally, scripts, tests, tunnels |
+| [Scope and decisions](SCOPE.md) | The source of truth for behaviour, with every decision (D1–D55) |
+| [Architecture notes](docs/ARCHITECTURE.md) | State machine and design details from the build |
+
+
+The full guide, including Slack, GitLab and tunnels, is in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
