@@ -5,6 +5,7 @@
 import { PgBoss } from "pg-boss";
 import { env } from "@/lib/env";
 import type { InteractionPayload } from "@/lib/slack/interactions";
+import { handleReaction, type ReactionEvent } from "@/lib/slack/events";
 import { handleInteraction } from "@/lib/slack/interactions";
 import { handleIngestGitlabEvent, type IngestGitlabEventJob } from "./handlers/ingest-gitlab-event";
 import {
@@ -15,6 +16,7 @@ import {
   runAutoPublish,
   sendReminder,
   syncRecipientDm,
+  syncFeedReaction,
   syncRequesterDm,
 } from "./handlers/shipment-messages";
 import { JOBS, type ShipmentJob, type TimerJob } from "./jobs";
@@ -49,7 +51,9 @@ async function main() {
     JOBS.handleSlackInteraction,
     each(({ payload }: { payload: InteractionPayload }) => handleInteraction(payload)),
   );
-  // TODO: refresh-merge-requests (M4), review-weight (v1.5).
+  await boss.work<{ event: ReactionEvent }>(JOBS.handleSlackReaction, each(({ event }: { event: ReactionEvent }) => handleReaction(event)));
+  await boss.work<ShipmentJob>(JOBS.syncFeedReaction, each(syncFeedReaction));
+  // TODO: refresh-merge-requests, review-weight (after v1, D51).
 
   console.log(`[worker] started; queues: ${Object.values(JOBS).join(", ")}`);
 

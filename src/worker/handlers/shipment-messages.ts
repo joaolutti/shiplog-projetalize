@@ -19,7 +19,7 @@ import {
   requesterDm,
   reverificationDm,
 } from "@/lib/slack/blocks";
-import { post, reply, sendDm, update } from "@/lib/slack/client";
+import { post, reply, sendDm, setBotReaction, update, verifiedReactions } from "@/lib/slack/client";
 import { resolveRequester } from "@/lib/slack/directory";
 import type { ShipmentJob, TimerJob } from "../jobs";
 
@@ -68,7 +68,9 @@ export async function sendReminder({ shipmentId, cycle }: TimerJob): Promise<voi
   const s = await loadShipment(shipmentId);
   if (!s || s.view.status !== "pending_confirmation" || s.pendingSince?.toISOString() !== cycle) return;
   if (s.reminderSentAt || !s.dm) return;
-  const hoursLeft = Math.max(1, Math.round(env("AUTO_PUBLISH_AFTER_HOURS") - env("REMINDER_AFTER_HOURS")));
+  // The reminder may have waited for business hours, so count from now.
+  const publishAt = s.pendingSince!.getTime() + env("AUTO_PUBLISH_AFTER_HOURS") * 3_600_000;
+  const hoursLeft = Math.max(1, Math.round((publishAt - Date.now()) / 3_600_000));
   await reply(s.dm, reminderReply(s.view, hoursLeft));
   await db().update(shipments).set({ reminderSentAt: new Date() }).where(eq(shipments.id, shipmentId));
 }
@@ -167,4 +169,17 @@ export async function requestReverification({ shipmentId }: ShipmentJob): Promis
     if (slackId) await sendDm(slackId, message);
     else log("request-reverification", `${shipmentId}: ${r.userId} hasn't signed in with Slack`);
   }
+}
+
+// The bot's ✅ on the channel card while the shipment is verified and nobody has reacted ✅ themselves (D53).
+export async function syncFeedReaction({ shipmentId }: ShipmentJob): Promise<void> {
+  const [s] = await db()
+    .select({ status: shipments.status, verification: shipments.verificationStatus, feed: shipments.feedMessageTs })
+    .from(shipments)
+    .where(eq(shipments.id, shipmentId));
+  if (!s?.feed || s.status !== "published") return;
+  const ref = { channel: env("SLACK_FEED_CHANNEL_ID"), ts: s.feed };
+  const { people, bot } = await verifiedReactions(ref);
+  const want = s.verification === "verified" && !people;
+  if (want !== bot) await setBotReaction(ref, want);
 }

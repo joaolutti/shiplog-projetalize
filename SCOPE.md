@@ -97,7 +97,7 @@ GitLab: "Development: Done" label added, or Status moved to Done / Deployed Main
       ├── read-only card in the channel, in the team's format (D49), with [Open in Shiplog]
       └── DM the requester: "Your fix shipped to Staging" [Verify] [Open]
    ▼
-[5] Verify (anyone, in the web app or from the requester DM)
+[5] Verify (anyone, in the web app, from the requester DM, or with a ✅ on the channel card, D53)
       ✅ Verified (by A, B, …)   or   ⚠️ Issue reported → thread comment + DM to the dev
       Reporters can change their own row to verified. "Pedir nova verificação" DMs every
       reporter again (dev or lead, at most once per hour per shipment) (D41)
@@ -153,7 +153,7 @@ and Slack handlers call the same commands.
 
 **Process changes needed:**
 - Add an optional `Solicitante:` line to the issue template.
-- Add `## Notas de entrega` to the MR template.
+- ~~Add `## Notas de entrega` to the MR template~~: after v1. Most MRs live in repos the token can't read (D51).
 
 **Language and time (D37, D42):** the interface and Slack messages are pt-BR only. GitLab label names,
 branch names and terms like MR/issue stay as they are. All dates and day buckets use `America/Sao_Paulo`.
@@ -275,13 +275,15 @@ The code is provider-agnostic: the AI SDK with an OpenAI-compatible base URL, co
 |---|---|
 | `POST /api/webhooks/gitlab` | Group webhook (Issue + Merge Request hooks). Store, enqueue, return 200 |
 | `POST /api/slack/interactions` | Button clicks / modal submits. Verify signature, ack within 3s, enqueue |
+| `POST /api/slack/events` | Events API: the URL check and ✅ `reaction_added` / `reaction_removed` (D53). Verify signature, enqueue |
 | `/api/auth/*` | Better Auth (Slack sign-in, GitLab connect) |
 | `GET /api/health` | Render health check |
 
 ### Background jobs (worker)
 `ingest-gitlab-event` · `sync-recipient-dm` · `send-reminder` · `auto-publish` ·
 `publish-shipment` · `sync-requester-dm` · `notify-issue-reported` · `handle-slack-interaction` ·
-`refresh-merge-requests` · `request-reverification` · `review-weight` (v1.5)
+`handle-slack-reaction` · `sync-feed-reaction` · `request-reverification` ·
+`refresh-merge-requests` · `review-weight` (after v1)
 
 ### Slack behaviour (M3)
 - **One DM per shipment, updated in place.** The recipient's DM shows the current gate (branch picker, open MRs,
@@ -310,9 +312,9 @@ The code is provider-agnostic: the AI SDK with an OpenAI-compatible base URL, co
 | System | What | Who |
 |---|---|---|
 | GitLab (Premium) | Group webhook on the top-level group (Issue + MR events, secret token). Group access token (`read_api`). OAuth application (`read_user`) | Group Owner |
-| Slack | One Slack app: OIDC sign-in, bot (`chat:write`, `im:write`, `users:read`), interactivity URL. Phase 2: `channels:history` for mirroring | Workspace admin |
-| Render | Blueprint (`render.yaml`): web, worker, Postgres, secret env group | Whoever owns billing |
-| LLM | OpenRouter company account with ZDR enforced | TBD (§12) |
+| Slack | One Slack app: OIDC sign-in, bot (`chat:write`, `im:write`, `users:read`, `reactions:read`, `reactions:write`), interactivity URL, event subscriptions (`reaction_added`, `reaction_removed` → `/api/slack/events`). Phase 2: `channels:history` for mirroring | João (free plan) |
+| Render | Blueprint (`render.yaml`): web, worker, Postgres, secret env group | João (free plan) |
+| LLM | OpenRouter account, free model (D52) | João (free plan) |
 
 ## 11. Milestones
 
@@ -338,7 +340,7 @@ The code is provider-agnostic: the AI SDK with an OpenAI-compatible base URL, co
 - [ ] Confirm the Fibonacci scale's top value (13? 21?) and update the rubric (`config/weight-rubric.md`).
 - [ ] Leads choose the calibration tickets (`config/calibration.yaml`).
 - [x] ~~Add `Solicitante` to the issue template~~: already there, as a table column (read since 2026-11-10).
-- [ ] Add `## Notas de entrega` to the MR template.
+- [x] ~~Add `## Notas de entrega` to the MR template~~: after v1, with MR visibility (D51). Today the token can't read most MRs.
 - [ ] ~~Production needs a **group** access token (D29)~~: not available, so weight review and cross-repo MRs move after v1 (D51). A project token only sees its own project, so MRs in
       other repos can't be read: #5129's MR (`p1429/modules/backend/api/services/databook!132`, linked in an
       internal comment, D48) returns 404 with the current `p1429/predialize` token.
@@ -347,10 +349,10 @@ The code is provider-agnostic: the AI SDK with an OpenAI-compatible base URL, co
 - [ ] Confirm (implemented this way in M1): an MR closed without merging no longer blocks the hold gate.
 - [ ] Confirm (implemented this way in M1): a re-ship (reopen → Done again, same branch) reuses the same shipment row with a new draft cycle.
 - [ ] Confirm (implemented this way in M1): a shipment still waiting on the hold question moves on to the draft once no related MR is open.
-- [ ] Who creates the Slack app (workspace admin) and the GitLab group token/webhook (group Owner)?
-- [ ] Who owns Render billing and the LLM account?
+- [x] ~~Who owns the Slack app, Render billing and the LLM account?~~ João, all on free plans (2026-11-13).
+- [ ] Who sets up the production GitLab webhook (project Maintainer on `p1429/predialize`)?
 - [ ] Fill in `config/data-policy.yaml` with the real groups/projects.
-- [ ] Reminder delay (default 4h) and auto-publish delay (default 24h).
+- [x] ~~Reminder delay and auto-publish delay~~: 4 h and 24 h; reminders only in business hours (D54).
 
 ## 13. Decisions after the handoff
 
@@ -376,3 +378,6 @@ Numbered to continue the decision log in `HANDOFF.md` §3. Where they differ, th
 | D50 | **LLM-drafted notes in v1.** The channel text (the quoted line) is drafted from the issue title and description plus readable MRs' `## Notas de entrega`, with the rules of the team's `pdz-generate-slack-communication` skill (pt-BR, 1–3 sentences, nothing invented). It runs at ingest, behind `LLM_ENABLED`, through the data policy and redaction, and every call is logged in `llm_audit_log` (`purpose = notes_draft`). Any failure falls back to the MR notes / MR title / issue title. The dev still confirms or edits it in the DM |
 | D51 | **No group access token.** We keep the `p1429/predialize` project token, so the weight second opinion and cross-repo MR visibility move to "Next steps (after v1)" |
 | D52 | **v1 runs on an OpenRouter free model** (e.g. `google/gemma-4-31b-it:free`). Free models allow 50 requests/day and we send at most ~15. Many don't support structured outputs, so the draft is plain text, checked for length. A failure or a hit limit falls back to the plain notes. Free endpoints may log prompts, which is acceptable while v1 is a trial: only redacted issue text is sent. A paid model (or a direct Anthropic API key) is one setting away if Shiplog is adopted |
+| D53 | **✅ on the channel card and verification mirror each other.** A ✅ reaction verifies the shipment as that Slack user (account created on first contact, D12); removing it takes their verification back but never drops a reported problem. Verified in Shiplog (web or DM) with nobody's ✅ on the card yet → the bot adds its own ✅, and removes it once people react or the shipment stops being verified. Only `:white_check_mark:` on the channel card counts |
+| D54 | **Reminders only in business hours**: 4 h after the draft, moved to the next São Paulo business time (Monday–Friday, 9:00–18:00) if it lands outside it. The reminder says how long is left until auto-publish (24 h, which isn't moved). National holidays count as business days for now |
+| D55 | **No MR, repository or line counts in v1**, for any role (D51): most are 0 because the MRs live in repos the token can't read |

@@ -14,6 +14,10 @@ export const JOBS = {
   notifyComment: "notify-comment",
   refreshMergeRequests: "refresh-merge-requests",
   handleSlackInteraction: "handle-slack-interaction",
+  // A ✅ added to or removed from a channel card (D53).
+  handleSlackReaction: "handle-slack-reaction",
+  // The bot's ✅ on the channel card, to match the verification (D53).
+  syncFeedReaction: "sync-feed-reaction",
   requestReverification: "request-reverification",
   reviewWeight: "review-weight", // v1.5
 } as const;

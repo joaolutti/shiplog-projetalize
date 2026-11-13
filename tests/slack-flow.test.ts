@@ -9,6 +9,7 @@ import { account, comments, shipments, tickets, user, verifications } from "@/li
 import { CommandError, requestReverification, unverify, type Actor } from "@/lib/shipments/commands";
 import { dispatch, execute } from "@/lib/shipments/effects";
 import { ACTIONS, MENTIONS_BLOCK, MODALS, FIELDS, REQUESTER_BLOCK } from "@/lib/slack/blocks";
+import { handleReaction, parseSlackEvent, type ReactionEvent } from "@/lib/slack/events";
 import { handleInteraction, type InteractionPayload } from "@/lib/slack/interactions";
 import {
   notifyComment,
@@ -16,6 +17,7 @@ import {
   requestReverification as requestReverificationJob,
   runAutoPublish,
   sendReminder,
+  syncFeedReaction,
   syncRecipientDm,
 } from "@/worker/handlers/shipment-messages";
 import { hasDb, resetDb } from "./helpers/db";
@@ -35,6 +37,8 @@ vi.mock("@/lib/jobs/queue", () => ({
 const slackApi = vi.hoisted(() => ({
   sent: [] as Array<{ kind: string; to: string; text: string }>,
   ts: 0,
+  // ✅ reactions on the channel card, as verifiedReactions reports them.
+  reactions: { people: false, bot: false },
 }));
 vi.mock("@/lib/slack/client", () => ({
   sendDm: async (to: string, m: { text: string }) => {
@@ -50,6 +54,12 @@ vi.mock("@/lib/slack/client", () => ({
   },
   reply: async (ref: { channel: string; ts: string }, m: { text: string }) => {
     slackApi.sent.push({ kind: "reply", to: `${ref.channel}/${ref.ts}`, text: m.text });
+  },
+  VERIFIED_REACTION: "white_check_mark",
+  botUserId: async () => "U_BOT",
+  verifiedReactions: async () => slackApi.reactions,
+  setBotReaction: async (ref: { channel: string; ts: string }, on: boolean) => {
+    slackApi.sent.push({ kind: on ? "react" : "unreact", to: `${ref.channel}/${ref.ts}`, text: "" });
   },
   slack: () => ({
     users: { info: async ({ user: id }: { user: string }) => ({ user: { name: id, profile: { real_name: `Pessoa ${id}` } } }) },
@@ -135,6 +145,7 @@ beforeEach(async () => {
   queue.jobs = [];
   slackApi.sent = [];
   slackApi.ts = 0;
+  slackApi.reactions = { people: false, bot: false };
   ephemeral.texts = [];
 });
 
@@ -188,7 +199,7 @@ describe.skipIf(!hasDb)("draft → confirm → publish → verify", () => {
 
     await handleInteraction(click("U_ANA", ACTIONS.verify, String(s.id)));
     expect((await shipment(s.id)).verificationStatus).toBe("verified");
-    expect(jobNames()).toEqual(["sync-requester-dm"]);
+    expect(jobNames()).toEqual(["sync-requester-dm", "sync-feed-reaction"]);
     const [ana] = await db().select().from(account).where(eq(account.accountId, "U_ANA"));
     expect(ana.providerId).toBe("slack");
   });
@@ -330,7 +341,7 @@ describe.skipIf(!hasDb)("unverify and reverification (D41)", () => {
     expect((await shipment(s.id)).verificationStatus).toBe("verified");
     expect((await db().select().from(verifications)).map((v) => v.userId)).toEqual(["u-dev"]);
     expect((await shipment(s.id)).timeline.at(-1)).toMatchObject({ event: "unverified", data: { by: "u-lead", previous: "issue_reported" } });
-    expect(jobNames()).toEqual(["sync-requester-dm", "sync-requester-dm"]);
+    expect(jobNames()).toEqual(["sync-requester-dm", "sync-feed-reaction", "sync-requester-dm", "sync-feed-reaction"]);
 
     expect(await execute((tx) => unverify(tx, { actor: as("u-lead", "lead"), shipmentId: s.id }))).toMatchObject({ kind: "noop" });
   });
@@ -364,5 +375,74 @@ describe.skipIf(!hasDb)("unverify and reverification (D41)", () => {
     await requestReverificationJob({ shipmentId: s.id });
     expect(slackApi.sent.map((m) => m.kind + ":" + m.to).sort()).toEqual(["dm:U_LEAD", "dm:U_OTHER"]);
     expect(slackApi.sent[0].text).toBe("Pode conferir de novo #412?");
+  });
+});
+
+describe("parseSlackEvent", () => {
+  const reaction = { type: "reaction_added", user: "U_ANA", reaction: "white_check_mark", item: { type: "message", channel: "C_FEED", ts: "9" } };
+  it("answers the URL check and keeps only ✅ reactions", () => {
+    expect(parseSlackEvent(JSON.stringify({ type: "url_verification", challenge: "abc" }))).toEqual({ challenge: "abc" });
+    expect(parseSlackEvent(JSON.stringify({ type: "event_callback", event: reaction }))).toEqual({ reaction });
+    expect(parseSlackEvent(JSON.stringify({ type: "event_callback", event: { ...reaction, reaction: "eyes" } }))).toBeNull();
+    expect(parseSlackEvent(JSON.stringify({ type: "event_callback", event: { type: "message" } }))).toBeNull();
+    expect(parseSlackEvent("not json")).toBeNull();
+  });
+});
+
+describe.skipIf(!hasDb)("✅ reactions (D53)", () => {
+  const react = (type: ReactionEvent["type"], user: string, ts = "9", channel = "C_FEED"): ReactionEvent => ({
+    type,
+    user,
+    reaction: "white_check_mark",
+    item: { type: "message", channel, ts },
+  });
+  async function published() {
+    const s = await seed();
+    await db().update(shipments).set({ status: "published", publishedVia: "confirmed", feedMessageTs: "9" }).where(eq(shipments.id, s.id));
+    return s;
+  }
+
+  it("a ✅ on the channel card verifies as that person; removing it takes it back", async () => {
+    const s = await published();
+    await handleReaction(react("reaction_added", "U_ANA"));
+    expect((await shipment(s.id)).verificationStatus).toBe("verified");
+    expect(jobNames()).toEqual(["sync-requester-dm", "sync-feed-reaction"]);
+
+    await handleReaction(react("reaction_removed", "U_ANA"));
+    expect((await shipment(s.id)).verificationStatus).toBe("unverified");
+  });
+
+  it("ignores the bot's own ✅, other messages and other channels", async () => {
+    const s = await published();
+    await handleReaction(react("reaction_added", "U_BOT"));
+    await handleReaction(react("reaction_added", "U_ANA", "123"));
+    await handleReaction(react("reaction_added", "U_ANA", "9", "C_OTHER"));
+    expect((await shipment(s.id)).verificationStatus).toBe("unverified");
+    expect(queue.jobs).toEqual([]);
+  });
+
+  it("removing a ✅ never drops a reported problem", async () => {
+    const s = await published();
+    await handleInteraction(submit("U_ANA", MODALS.reportIssue, s.id, "Ainda falha"));
+    await handleReaction(react("reaction_removed", "U_ANA"));
+    expect((await shipment(s.id)).verificationStatus).toBe("issue_reported");
+  });
+
+  it("the bot reacts ✅ while verified and nobody else has, and takes it back otherwise", async () => {
+    const s = await published();
+    await db().update(shipments).set({ verificationStatus: "verified" }).where(eq(shipments.id, s.id));
+    await syncFeedReaction({ shipmentId: s.id });
+    expect(slackApi.sent).toEqual([{ kind: "react", to: "C_FEED/9", text: "" }]);
+
+    slackApi.sent = [];
+    slackApi.reactions = { people: true, bot: true };
+    await syncFeedReaction({ shipmentId: s.id });
+    expect(slackApi.sent).toEqual([{ kind: "unreact", to: "C_FEED/9", text: "" }]);
+
+    slackApi.sent = [];
+    slackApi.reactions = { people: false, bot: false };
+    await db().update(shipments).set({ verificationStatus: "issue_reported" }).where(eq(shipments.id, s.id));
+    await syncFeedReaction({ shipmentId: s.id });
+    expect(slackApi.sent).toEqual([]);
   });
 });

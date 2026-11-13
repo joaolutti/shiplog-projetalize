@@ -41,7 +41,7 @@ export function VerifyControl({ item, variant = "text" }: { item: Pick<FeedItem,
 // Where a card or row leads: the side panel for that shipment, on the current page.
 export type PanelHref = (shipmentId: number) => string;
 
-// `tech`: repo, MR and line counts and GitLab links, for devs and leads only. Members can't act on them.
+// `tech`: project path and GitLab link, for devs and leads only. MR, repo and line counts aren't shown in v1 (D51).
 export function ShipmentCard({ item, href, tech }: { item: FeedItem; href: PanelHref; tech: boolean }) {
   return (
     <article className="ac">
@@ -80,20 +80,6 @@ export function ShipmentCard({ item, href, tech }: { item: FeedItem; href: Panel
             <span>{item.webUrl.replace(/^https?:\/\//, "")}</span>
             <Icon name="open_in_new" />
           </a>
-          <div className="ac-stats">
-            <div>
-              <span className="k">MRs</span>
-              <span className="v">{item.mrCount}</span>
-            </div>
-            <div>
-              <span className="k">Repositórios</span>
-              <span className="v">{item.repoCount}</span>
-            </div>
-            <div>
-              <span className="k">Linhas</span>
-              <span className="v">{item.lines ?? "—"}</span>
-            </div>
-          </div>
         </div>
       )}
       {item.publishedVia === "auto" && (
@@ -121,7 +107,6 @@ export function ShipmentCard({ item, href, tech }: { item: FeedItem; href: Panel
 
 export function ShipmentTable({ items, actions, href, tech }: { items: FeedItem[]; actions?: boolean; href: PanelHref; tech: boolean }) {
   if (items.length === 0) return <Empty>Nenhuma entrega com esses filtros.</Empty>;
-  const max = Math.max(1, ...items.map((i) => i.lines ?? 0));
   return (
     <div className="tbl-wrap">
       <table className="tbl">
@@ -130,8 +115,6 @@ export function ShipmentTable({ items, actions, href, tech }: { items: FeedItem[
             <th>Status</th>
             <th>{tech ? "Issue · projeto" : "Issue"}</th>
             <th>Branch</th>
-            {tech && <th className="n">MRs</th>}
-            {tech && <th>Linhas alteradas</th>}
             <th>Entregue</th>
             <th className="n">{actions ? "Ação" : "Abrir"}</th>
           </tr>
@@ -158,17 +141,6 @@ export function ShipmentTable({ items, actions, href, tech }: { items: FeedItem[
               <td>
                 <BranchTag branch={item.branch} />
               </td>
-              {tech && <td className="n">{item.mrCount}</td>}
-              {tech && (
-                <td>
-                  <div className="size">
-                    <span className="bar" aria-hidden="true">
-                      <i style={{ width: `${Math.max(3, ((item.lines ?? 0) / max) * 100)}%` }} />
-                    </span>
-                    <b>{item.lines ?? "—"}</b>
-                  </div>
-                </td>
-              )}
               <td className="muted tab">{shortDate(item.publishedAt)}</td>
               <td className="n">
                 {actions ? (

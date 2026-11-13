@@ -56,3 +56,19 @@ export function ago(d: Date, now = new Date()): string {
 }
 
 export const MONTHS = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+
+const OPEN = 9;
+const CLOSE = 18;
+const isWeekday = (key: string) => ![0, 6].includes(fromDayKey(key).getUTCDay());
+
+// `d` if it falls in São Paulo business hours (Monday–Friday, 9:00–18:00), else when they next open.
+// shortcut: national holidays count as business days; add a holiday list if reminders land on one.
+export function nextBusinessTime(d: Date): Date {
+  const key = dayKey(d);
+  // São Paulo is UTC-3 all year, so its midnight is 03:00 UTC.
+  const hour = (d.getTime() - Date.parse(`${key}T03:00:00Z`)) / 3_600_000;
+  if (isWeekday(key) && hour >= OPEN && hour < CLOSE) return d;
+  let next = isWeekday(key) && hour < OPEN ? key : addDays(key, 1);
+  while (!isWeekday(next)) next = addDays(next, 1);
+  return new Date(`${next}T${String(OPEN + 3).padStart(2, "0")}:00:00Z`);
+}

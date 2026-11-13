@@ -967,21 +967,6 @@ table.tbl {
   font-size: 12px;
   color: var(--color-muted);
 }
-.size {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-.size .bar {
-  width: 64px;
-  flex: none;
-}
-.size b {
-  font-weight: 400;
-  font-variant-numeric: tabular-nums;
-  min-width: 40px;
-  text-align: right;
-}
 .go {
   color: var(--color-muted);
   text-decoration: none;
@@ -1526,32 +1511,6 @@ table.mr {
 }
 .ac-url:hover {
   color: var(--color-text);
-}
-.ac-stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  border-top: 1px solid var(--color-line);
-}
-.ac-stats div {
-  padding: 12px 8px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.ac-stats div + div {
-  border-left: 1px solid var(--color-line);
-}
-.ac-stats .k {
-  font-size: 13px;
-  color: var(--color-muted);
-  text-transform: none;
-  letter-spacing: 0;
-  font-weight: 400;
-}
-.ac-stats .v {
-  font-size: 16px;
-  font-variant-numeric: tabular-nums;
 }
 .ac-tags {
   display: flex;

@@ -1,6 +1,6 @@
 /**
- * Slack Web API (bot token). Bot scopes: chat:write, im:write, users:read
- * (v2: channels:history for thread mirroring).
+ * Slack Web API (bot token). Bot scopes: chat:write, im:write, users:read, reactions:read,
+ * reactions:write (v2: channels:history for thread mirroring).
  *
  * All DMs go through sendDm, which applies the SLACK_DM_ALLOWLIST development guard.
  */
@@ -71,4 +71,31 @@ export async function update(ref: MessageRef, message: SlackMessage): Promise<vo
 // Posts in the thread of an existing message (e.g. the reminder under the draft DM).
 export async function reply(ref: MessageRef, message: SlackMessage): Promise<void> {
   await slack().chat.postMessage({ channel: ref.channel, thread_ts: ref.ts, text: message.text, blocks: message.blocks });
+}
+
+// ✅ on the channel card and verification in Shiplog mirror each other (D53).
+export const VERIFIED_REACTION = "white_check_mark";
+
+let botId: Promise<string> | undefined;
+
+// The bot's own user ID, so its reactions aren't taken for someone verifying.
+export function botUserId(): Promise<string> {
+  botId ??= slack()
+    .auth.test()
+    .then((r) => r.user_id ?? "");
+  return botId;
+}
+
+// Who reacted ✅ on a message: anyone besides the bot, and the bot itself.
+export async function verifiedReactions(ref: MessageRef): Promise<{ people: boolean; bot: boolean }> {
+  const res = await slack().reactions.get({ channel: ref.channel, timestamp: ref.ts, full: true });
+  const users = res.message?.reactions?.find((r) => r.name === VERIFIED_REACTION)?.users ?? [];
+  const bot = await botUserId();
+  return { people: users.some((u) => u !== bot), bot: users.includes(bot) };
+}
+
+export async function setBotReaction(ref: MessageRef, on: boolean): Promise<void> {
+  const args = { channel: ref.channel, timestamp: ref.ts, name: VERIFIED_REACTION };
+  if (on) await slack().reactions.add(args);
+  else await slack().reactions.remove(args);
 }

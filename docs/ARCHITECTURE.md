@@ -162,6 +162,7 @@ Nothing goes to Slack yet.
   - This can't happen silently on auto-publish. With no resolved requester, the requester DM just isn't sent, and
     the ticket page shows the raw name.
 - **Slack scopes:** `users:read` is enough. `users:read.email` is no longer needed for this.
+  The ✅ sync (D53) adds `reactions:read` and `reactions:write`.
 
 ---
 
@@ -172,6 +173,9 @@ Nothing goes to Slack yet.
   - **Opens modals inline:** `shipment.edit_notes`, `shipment.add_comment`, and the "outro peso" picker if it
     becomes a modal.
   - Queues everything else as `handle-slack-interaction`, then replies 200.
+- **`/api/slack/events`** (D53): answers Slack's URL check, queues ✅ `reaction_added` / `reaction_removed` as
+  `handle-slack-reaction`, then replies 200. `sync-feed-reaction` keeps the bot's own ✅ in line with the
+  verification.
 - **Action IDs:** the existing ones in `ACTIONS`, plus `shipment.request_reverification`. The reporter's DM reuses
   `shipment.verify` and `shipment.report_issue`.
 - **Jobs (M3):** `sync-recipient-dm`, `send-reminder`, `auto-publish`, `publish-shipment`,

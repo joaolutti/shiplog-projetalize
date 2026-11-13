@@ -5,6 +5,7 @@
  * posts twice.
  */
 import { eq } from "drizzle-orm";
+import { nextBusinessTime } from "@/lib/dates";
 import { db } from "@/lib/db/client";
 import { shipments } from "@/lib/db/schema";
 import { env } from "@/lib/env";
@@ -45,12 +46,14 @@ export async function dispatch(tx: Tx, steps: NextStep[]): Promise<void> {
         break;
       case "verification_changed":
         await enqueue(JOBS.syncRequesterDm, job, {}, tx);
+        await enqueue(JOBS.syncFeedReaction, job, {}, tx);
         break;
       case "comment_added":
         await enqueue(JOBS.notifyComment, { ...job, commentId: step.commentId }, {}, tx);
         break;
       case "issue_reported":
         await enqueue(JOBS.syncRequesterDm, job, {}, tx);
+        await enqueue(JOBS.syncFeedReaction, job, {}, tx);
         await enqueue(JOBS.notifyIssueReported, { ...job, commentId: step.commentId }, {}, tx);
         break;
       case "reverification_requested":
@@ -69,7 +72,8 @@ async function scheduleTimers(tx: Tx, shipmentId: number): Promise<void> {
   const timer: TimerJob = { shipmentId, cycle };
 
   await enqueue(JOBS.sendReminder, timer, {
-    startAfter: new Date(start + env("REMINDER_AFTER_HOURS") * HOUR),
+    // Never at night or on weekends: moved to when business hours next open.
+    startAfter: nextBusinessTime(new Date(start + env("REMINDER_AFTER_HOURS") * HOUR)),
     singletonKey: `${shipmentId}:${cycle}`,
   }, tx);
   await enqueue(JOBS.autoPublish, timer, {

@@ -389,7 +389,9 @@ cloudflared tunnel --url http://localhost:3000
 
 - Point a **test GitLab project's** webhook (not the group's) at `<tunnel>/api/webhooks/gitlab`.
   Enable Issue and Merge Request events, and set the secret to `GITLAB_WEBHOOK_SECRET`.
-- Later, point a **dev Slack app's** interactivity URL at `<tunnel>/api/slack/interactions`.
+- Later, point a **dev Slack app's** interactivity URL at `<tunnel>/api/slack/interactions`, and its
+  Event Subscriptions request URL at `<tunnel>/api/slack/events` (bot events `reaction_added`,
+  `reaction_removed`; scopes `reactions:read`, `reactions:write`; reinstall the app after adding scopes).
 - A quick tunnel gets a new URL on every run. Use a named Cloudflare tunnel if updating the URLs gets tedious.
 - Every delivery is stored in `gitlab_events`, and `scripts/replay-event.ts` (added in M1) re-runs one with
   `bun run scripts/replay-event.ts <id>`, without GitLab.

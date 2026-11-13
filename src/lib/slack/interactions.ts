@@ -181,7 +181,7 @@ async function teamActor(slackUserId: string): Promise<Actor> {
 }
 
 // Anyone in the workspace may verify, report or comment (D12): created on first contact.
-async function anyoneActor(slackUserId: string): Promise<Actor> {
+export async function anyoneActor(slackUserId: string): Promise<Actor> {
   const found = await ensureSlackUser(slackUserId);
   return { kind: "user", userId: found.id, role: found.role };
 }

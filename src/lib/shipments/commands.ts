@@ -426,14 +426,21 @@ export async function reportIssue(
   return { kind: "issue_reported", shipmentId: shipment.id, commentId: comment.id };
 }
 
-// "Você verificou · desfazer": the actor removes their own verification row.
-export async function unverify(tx: Tx, args: { actor: Actor; shipmentId: number }): Promise<NextStep> {
+// "Você verificou · desfazer": the actor removes their own verification row. `onlyVerified`: removing
+// the ✅ in Slack takes back a verification, never a reported problem (D53).
+export async function unverify(tx: Tx, args: { actor: Actor; shipmentId: number; onlyVerified?: boolean }): Promise<NextStep> {
   if (args.actor.kind !== "user") throw new CommandError("forbidden", "verification comes from people");
   const shipment = await loadForUpdate(tx, args.shipmentId);
   if (shipment.status !== "published") return { kind: "noop", reason: `shipment ${shipment.id} isn't published` };
   const [removed] = await tx
     .delete(verifications)
-    .where(and(eq(verifications.shipmentId, shipment.id), eq(verifications.userId, args.actor.userId)))
+    .where(
+      and(
+        eq(verifications.shipmentId, shipment.id),
+        eq(verifications.userId, args.actor.userId),
+        args.onlyVerified ? eq(verifications.kind, "verified") : undefined,
+      ),
+    )
     .returning({ kind: verifications.kind });
   if (!removed) return { kind: "noop", reason: `shipment ${shipment.id}: ${args.actor.userId} hasn't verified` };
   const status = await recomputeVerification(tx, shipment.id);
