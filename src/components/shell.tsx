@@ -2,7 +2,7 @@
 /**
  * The app frame (sidebar + top bar), ported from the prototype. Client-side only for what needs
  * the browser: collapsing the sidebar (remembered per browser), the mobile menu, and highlighting
- * the current page. Everything that reads the viewer is passed in as server-rendered slots.
+ * the current page and its breadcrumb. Everything that reads the viewer is passed in as server-rendered slots.
  */
 import Image from "next/image";
 import Link from "next/link";
@@ -43,11 +43,14 @@ function readCollapsed(): boolean {
  * <Suspense> would block prerendering (Cache Components). The crumb and the active link read it
  * inside their own boundaries.
  */
-export function AppFrame(props: { nav: ReactNode; meter: ReactNode; user: ReactNode; actions: ReactNode; children: ReactNode }) {
+export function AppFrame(props: { nav: ReactNode; user: ReactNode; actions: ReactNode; children: ReactNode }) {
   const collapsed = useSyncExternalStore(subscribeCollapsed, readCollapsed, () => false);
   const [navOpen, setNavOpen] = useState(false);
+  // Animate only after a click, so a remembered collapsed sidebar doesn't animate on every load.
+  const [animate, setAnimate] = useState(false);
 
   const toggle = () => {
+    setAnimate(true);
     try {
       localStorage.setItem(COLLAPSED_KEY, collapsed ? "0" : "1");
     } catch {
@@ -57,23 +60,19 @@ export function AppFrame(props: { nav: ReactNode; meter: ReactNode; user: ReactN
   };
 
   return (
-    <div className={`app ${collapsed ? "collapsed" : ""} ${navOpen ? "nav-open" : ""}`}>
+    <div className={`app ${collapsed ? "collapsed" : ""} ${navOpen ? "nav-open" : ""} ${animate ? "animate" : ""}`}>
       <aside className="side" aria-label="Navegação">
         <div className="side-h">
           <Link className="brand" href="/" aria-label="Início do Shiplog">
             <Image src="/patch-mark.png" alt="" width={32} height={32} priority />
             <span>shiplog</span>
           </Link>
-          <button className="icon-btn side-toggle" onClick={toggle} aria-label={collapsed ? "Expandir menu" : "Recolher menu"}>
-            <Icon name={collapsed ? "left_panel_open" : "left_panel_close"} />
-          </button>
         </div>
         {/* Following a link closes the mobile menu. */}
         <nav className="snav" aria-label="Principal" onClick={(e) => (e.target as Element).closest("a") && setNavOpen(false)}>
           {props.nav}
         </nav>
         <div className="side-sp" />
-        <div className="side-blk side-meter">{props.meter}</div>
         <div className="side-blk">{props.user}</div>
       </aside>
       <div className="scrim" onClick={() => setNavOpen(false)} />
@@ -82,11 +81,17 @@ export function AppFrame(props: { nav: ReactNode; meter: ReactNode; user: ReactN
           <button className="icon-btn menu" onClick={() => setNavOpen(true)} aria-label="Abrir menu">
             <Icon name="menu" />
           </button>
-          <Suspense fallback={<div className="crumb" />}>
+          <button className="icon-btn side-toggle" onClick={toggle} aria-label={collapsed ? "Expandir menu" : "Recolher menu"}>
+            <Icon name={collapsed ? "left_panel_open" : "left_panel_close"} />
+          </button>
+          <Suspense fallback={<nav className="crumb" />}>
             <Crumb />
           </Suspense>
           <div className="top-r">{props.actions}</div>
         </header>
+        <Suspense fallback={null}>
+          <PageHead />
+        </Suspense>
         {props.children}
       </div>
     </div>
@@ -126,23 +131,33 @@ const PAGES: Record<string, [string, string]> = {
   "/dev/slack-preview": ["Prévia do Slack", "As mensagens que o Shiplog envia por DM e no canal."],
 };
 
+// Shiplog / page (/ ticket): earlier steps link back, the last one is where you are.
 function Crumb() {
   const pathname = usePathname();
-  if (pathname.startsWith("/tickets/")) {
-    return (
-      <div className="crumb">
-        <Link href="/feed">Entregas</Link>
-        <span className="sep" />
-        <span className="sub">Ticket</span>
-      </div>
-    );
-  }
-  const [title, sub] = PAGES[pathname] ?? ["Shiplog", ""];
+  const steps: Array<[string, string?]> = pathname.startsWith("/tickets/")
+    ? [["Entregas", "/feed"], ["Ticket"]]
+    : [[PAGES[pathname]?.[0] ?? "Shiplog"]];
   return (
-    <div className="crumb">
-      <span>{title}</span>
-      {sub && <span className="sep" />}
-      {sub && <span className="sub">{sub}</span>}
+    <nav className="crumb" aria-label="Caminho">
+      <Link href="/">Shiplog</Link>
+      {steps.map(([label, href]) => (
+        <span key={label} className="step">
+          <span className="slash" aria-hidden="true">/</span>
+          {href ? <Link href={href}>{label}</Link> : <span aria-current="page">{label}</span>}
+        </span>
+      ))}
+    </nav>
+  );
+}
+
+// The page's title and one line about it. Ticket pages have their own heading.
+function PageHead() {
+  const page = PAGES[usePathname()];
+  if (!page) return null;
+  return (
+    <div className="page-h">
+      <h1>{page[0]}</h1>
+      <p>{page[1]}</p>
     </div>
   );
 }

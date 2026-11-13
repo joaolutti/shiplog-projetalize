@@ -13,12 +13,13 @@ export function Icon({ name, className = "" }: { name: string; className?: strin
   );
 }
 
+// A check coloured by where it shipped: green for main, yellow for staging, grey otherwise.
 export function BranchTag({ branch }: { branch: string | null }) {
   if (!branch) return <span className="branch">Sem branch</span>;
-  const main = branch.toLowerCase() === "main";
+  const tone = ({ main: "main", staging: "staging" } as Record<string, string>)[branch.toLowerCase()] ?? "";
   return (
-    <span className={`branch ${main ? "main" : ""}`}>
-      {main && <Icon name="rocket_launch" />}
+    <span className={`branch ${tone}`}>
+      <Icon name="check_circle" />
       {branch}
     </span>
   );

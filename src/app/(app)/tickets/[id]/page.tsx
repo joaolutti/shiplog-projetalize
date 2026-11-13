@@ -32,6 +32,8 @@ async function Ticket({ params }: Pick<PageProps<"/tickets/[id]">, "params">) {
 
   const published = t.shipments.filter((s) => s.status === "published");
   const inProgress = t.shipments.filter((s) => s.status !== "published");
+  // Repo, MRs, weight and GitLab links are for devs and leads; members can't act on them.
+  const tech = viewer.role !== "member";
 
   return (
     <>
@@ -43,7 +45,7 @@ async function Ticket({ params }: Pick<PageProps<"/tickets/[id]">, "params">) {
           </Link>
           <div className="tk-head">
             <span className="eyebrow">
-              {t.projectPath} · Issue #{t.iid}
+              {tech && `${t.projectPath} · `}Issue #{t.iid}
             </span>
             <h1>{t.title}</h1>
             <dl className="kv">
@@ -67,14 +69,16 @@ async function Ticket({ params }: Pick<PageProps<"/tickets/[id]">, "params">) {
                   </dd>
                 </div>
               )}
-              <div>
-                <dt>Origem</dt>
-                <dd>
-                  <a href={t.webUrl} target="_blank" rel="noreferrer">
-                    Abrir no GitLab <Icon name="open_in_new" />
-                  </a>
-                </dd>
-              </div>
+              {tech && (
+                <div>
+                  <dt>Origem</dt>
+                  <dd>
+                    <a href={t.webUrl} target="_blank" rel="noreferrer">
+                      Abrir no GitLab <Icon name="open_in_new" />
+                    </a>
+                  </dd>
+                </div>
+              )}
             </dl>
             {published.length > 0 && <Track shipments={published} />}
           </div>
@@ -94,7 +98,7 @@ async function Ticket({ params }: Pick<PageProps<"/tickets/[id]">, "params">) {
           <Discussion ticket={t} />
         </div>
         <aside className="col" aria-label="Detalhes">
-          {(viewer.role === "dev" || viewer.role === "lead") && <WeightPanel ticket={t} />}
+          {tech && <WeightPanel ticket={t} />}
           <History ticket={t} />
         </aside>
       </section>
@@ -168,7 +172,7 @@ function ShipmentBox({ shipment: s, viewer }: { shipment: TicketShipment; viewer
           <span className="k">O que mudou</span>
           <p className="notes-text">{s.notes ?? <span className="muted">Sem notas.</span>}</p>
         </div>
-        {s.mergeRequests.length > 0 && (
+        {viewer.role !== "member" && s.mergeRequests.length > 0 && (
           <div>
             <span className="k" style={{ display: "block", marginBottom: 8 }}>
               Merge requests

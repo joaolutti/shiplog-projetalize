@@ -1,4 +1,5 @@
 // Shipment lists for the overview and the feed: cards and a table (ported from the prototype).
+import Image from "next/image";
 import Link from "next/link";
 import { unverifyAction, verifyAction } from "@/app/(app)/actions";
 import { shortDate } from "@/lib/dates";
@@ -40,22 +41,21 @@ export function VerifyControl({ item, variant = "text" }: { item: Pick<FeedItem,
 // Where a card or row leads: the side panel for that shipment, on the current page.
 export type PanelHref = (shipmentId: number) => string;
 
-export function ShipmentCard({ item, href }: { item: FeedItem; href: PanelHref }) {
-  const main = item.branch?.toLowerCase() === "main";
+// `tech`: repo, MR and line counts and GitLab links, for devs and leads only. Members can't act on them.
+export function ShipmentCard({ item, href, tech }: { item: FeedItem; href: PanelHref; tech: boolean }) {
   return (
     <article className="ac">
       <div className="ac-h">
-        <span className="ib" title={item.branch ?? undefined}>
-          <Icon name={main ? "rocket_launch" : "science"} />
-        </span>
         <div className="ac-tt">
           <span className="iid">
-            #{item.iid} · {item.projectPath}
+            #{item.iid}
+            {tech && ` · ${item.projectPath}`}
           </span>
           <Link className="stretch" href={href(item.shipmentId)} scroll={false}>
             {item.title}
           </Link>
           <div className="row" style={{ gap: 10 }}>
+            <BranchTag branch={item.branch} />
             <VerificationBadge status={item.verification} small />
             {item.verifiers.length > 0 && (
               <span className="avatars">
@@ -66,33 +66,36 @@ export function ShipmentCard({ item, href }: { item: FeedItem; href: PanelHref }
             )}
           </div>
         </div>
-        <BranchTag branch={item.branch} />
+        {item.bug ? (
+          <Image className="mascot" src="/patch-investigation.png" alt="Bug" title="Bug" width={56} height={60} />
+        ) : (
+          <Image className="mascot" src="/patch-shipping.png" alt="" width={56} height={59} />
+        )}
       </div>
       {item.notes && <p className="ac-notes">{item.notes}</p>}
-      <div className="ac-who">
-        {item.devName && <span>Entregue por {item.devName}</span>}
-        {item.requesterName && <span>Solicitado por {item.requesterName}</span>}
-      </div>
-      <div className="ac-box">
-        <a className="ac-url" href={item.webUrl} target="_blank" rel="noreferrer">
-          <span>{item.webUrl.replace(/^https?:\/\//, "")}</span>
-          <Icon name="open_in_new" />
-        </a>
-        <div className="ac-stats">
-          <div>
-            <span className="k">MRs</span>
-            <span className="v">{item.mrCount}</span>
-          </div>
-          <div>
-            <span className="k">Repositórios</span>
-            <span className="v">{item.repoCount}</span>
-          </div>
-          <div>
-            <span className="k">Linhas</span>
-            <span className="v">{item.lines ?? "—"}</span>
+      {item.requesterName && <p className="ac-who">Solicitado por {item.requesterName}</p>}
+      {tech && (
+        <div className="ac-box">
+          <a className="ac-url" href={item.webUrl} target="_blank" rel="noreferrer">
+            <span>{item.webUrl.replace(/^https?:\/\//, "")}</span>
+            <Icon name="open_in_new" />
+          </a>
+          <div className="ac-stats">
+            <div>
+              <span className="k">MRs</span>
+              <span className="v">{item.mrCount}</span>
+            </div>
+            <div>
+              <span className="k">Repositórios</span>
+              <span className="v">{item.repoCount}</span>
+            </div>
+            <div>
+              <span className="k">Linhas</span>
+              <span className="v">{item.lines ?? "—"}</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
       {item.publishedVia === "auto" && (
         <div className="ac-tags">
           <ViaFlag via={item.publishedVia} />
@@ -116,7 +119,7 @@ export function ShipmentCard({ item, href }: { item: FeedItem; href: PanelHref }
   );
 }
 
-export function ShipmentTable({ items, actions, href }: { items: FeedItem[]; actions?: boolean; href: PanelHref }) {
+export function ShipmentTable({ items, actions, href, tech }: { items: FeedItem[]; actions?: boolean; href: PanelHref; tech: boolean }) {
   if (items.length === 0) return <Empty>Nenhuma entrega com esses filtros.</Empty>;
   const max = Math.max(1, ...items.map((i) => i.lines ?? 0));
   return (
@@ -125,10 +128,10 @@ export function ShipmentTable({ items, actions, href }: { items: FeedItem[]; act
         <thead>
           <tr>
             <th>Status</th>
-            <th>Issue · projeto</th>
+            <th>{tech ? "Issue · projeto" : "Issue"}</th>
             <th>Branch</th>
-            <th className="n">MRs</th>
-            <th>Linhas alteradas</th>
+            {tech && <th className="n">MRs</th>}
+            {tech && <th>Linhas alteradas</th>}
             <th>Entregue</th>
             <th className="n">{actions ? "Ação" : "Abrir"}</th>
           </tr>
@@ -146,22 +149,26 @@ export function ShipmentTable({ items, actions, href }: { items: FeedItem[]; act
                     {item.title}
                   </Link>
                 </div>
-                <div className="proj" style={{ marginTop: 2 }}>
-                  {item.projectPath}
-                </div>
+                {tech && (
+                  <div className="proj" style={{ marginTop: 2 }}>
+                    {item.projectPath}
+                  </div>
+                )}
               </td>
               <td>
                 <BranchTag branch={item.branch} />
               </td>
-              <td className="n">{item.mrCount}</td>
-              <td>
-                <div className="size">
-                  <span className="bar" aria-hidden="true">
-                    <i style={{ width: `${Math.max(3, ((item.lines ?? 0) / max) * 100)}%` }} />
-                  </span>
-                  <b>{item.lines ?? "—"}</b>
-                </div>
-              </td>
+              {tech && <td className="n">{item.mrCount}</td>}
+              {tech && (
+                <td>
+                  <div className="size">
+                    <span className="bar" aria-hidden="true">
+                      <i style={{ width: `${Math.max(3, ((item.lines ?? 0) / max) * 100)}%` }} />
+                    </span>
+                    <b>{item.lines ?? "—"}</b>
+                  </div>
+                </td>
+              )}
               <td className="muted tab">{shortDate(item.publishedAt)}</td>
               <td className="n">
                 {actions ? (

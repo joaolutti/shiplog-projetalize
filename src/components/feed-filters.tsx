@@ -3,14 +3,20 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useRef, useTransition } from "react";
 import type { FeedOptions } from "@/lib/shipments/queries";
+import { Combobox } from "./combobox";
 import { Icon } from "./ui";
 
+const STATUSES = [
+  { value: "unverified", label: "Aguardando verificação" },
+  { value: "verified", label: "Verificado" },
+  { value: "issue_reported", label: "Problema relatado" },
+];
+
 const PERIODS = [
-  ["", "Qualquer data"],
-  ["7", "Últimos 7 dias"],
-  ["30", "Últimos 30 dias"],
-  ["90", "Últimos 90 dias"],
-] as const;
+  { value: "7", label: "Últimos 7 dias" },
+  { value: "30", label: "Últimos 30 dias" },
+  { value: "90", label: "Últimos 90 dias" },
+];
 
 export function FeedFilters({ options, count }: { options: FeedOptions; count: number }) {
   const router = useRouter();
@@ -43,54 +49,34 @@ export function FeedFilters({ options, count }: { options: FeedOptions; count: n
           }}
         />
       </label>
-      <label className="sr" htmlFor="f-ver">
-        Verificação
-      </label>
-      <select className="sel" id="f-ver" value={value("verification")} onChange={(e) => set("verification", e.target.value)}>
-        <option value="">Qualquer status</option>
-        <option value="unverified">Aguardando verificação</option>
-        <option value="verified">Verificado</option>
-        <option value="issue_reported">Problema relatado</option>
-      </select>
-      <div className="seg" role="group" aria-label="Branch">
-        {["", ...options.branches].map((b) => (
-          <button key={b || "all"} type="button" aria-pressed={value("branch") === b} onClick={() => set("branch", b)}>
-            {b || "Todas"}
-          </button>
-        ))}
-      </div>
-      <label className="sr" htmlFor="f-dev">
-        Desenvolvedor
-      </label>
-      <select className="sel" id="f-dev" value={value("dev")} onChange={(e) => set("dev", e.target.value)}>
-        <option value="">Qualquer dev</option>
-        {options.devs.map((d) => (
-          <option key={d.id} value={d.id}>
-            {d.name}
-          </option>
-        ))}
-      </select>
-      <label className="sr" htmlFor="f-req">
-        Solicitante
-      </label>
-      <select className="sel" id="f-req" value={value("requester")} onChange={(e) => set("requester", e.target.value)}>
-        <option value="">Qualquer solicitante</option>
-        {options.requesters.map((r) => (
-          <option key={r.slackId} value={r.slackId}>
-            {r.name}
-          </option>
-        ))}
-      </select>
-      <label className="sr" htmlFor="f-days">
-        Período
-      </label>
-      <select className="sel" id="f-days" value={value("days")} onChange={(e) => set("days", e.target.value)}>
-        {PERIODS.map(([v, label]) => (
-          <option key={v} value={v}>
-            {label}
-          </option>
-        ))}
-      </select>
+      <Combobox label="Status" icon="task_alt" all="Qualquer status" options={STATUSES} value={value("verification")} onChange={(v) => set("verification", v)} />
+      <Combobox
+        label="Branch"
+        icon="alt_route"
+        all="Todas as branches"
+        options={options.branches.map((b) => ({ value: b, label: b }))}
+        value={value("branch")}
+        onChange={(v) => set("branch", v)}
+      />
+      <Combobox
+        label="Dev"
+        icon="person"
+        all="Qualquer dev"
+        search
+        options={options.devs.map((d) => ({ value: d.id, label: d.name }))}
+        value={value("dev")}
+        onChange={(v) => set("dev", v)}
+      />
+      <Combobox
+        label="Solicitante"
+        icon="person_raised_hand"
+        all="Qualquer solicitante"
+        search
+        options={options.requesters.map((r) => ({ value: r.slackId, label: r.name }))}
+        value={value("requester")}
+        onChange={(v) => set("requester", v)}
+      />
+      <Combobox label="Período" icon="calendar_today" all="Qualquer data" options={PERIODS} value={value("days")} onChange={(v) => set("days", v)} />
       <span className="muted tab" style={{ marginLeft: "auto", fontSize: 13 }}>
         {count} {count === 1 ? "entrega" : "entregas"}
       </span>

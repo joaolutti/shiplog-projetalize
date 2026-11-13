@@ -98,7 +98,6 @@ describe.skipIf(!hasDb)("overview", () => {
     expect(o.week).toMatchObject({ total: 1, today: expect.any(Number), verified: 1, waiting: 0, issues: 0, verifiedPct: 100, requesterPct: 100 });
     expect(o.week.byBranch).toEqual({ Main: 1 });
     expect(o.last7).toHaveLength(7);
-    expect(o.drafts).toEqual({ pending: 1, blocked: 0 });
     expect(o.attention.map((a) => a.title)).toEqual(["Rascunho aguardando confirmação"]);
     expect([...o.activity.values()].reduce((a, b) => a + b, 0)).toBe(2);
     expect(o.recent).toHaveLength(2);

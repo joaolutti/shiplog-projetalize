@@ -67,25 +67,6 @@ async function namesBySlackId(slackIds: string[]): Promise<Map<string, string>> 
   return new Map(rows.map((r) => [r.slackId, r.name]));
 }
 
-// ── Shell ────────────────────────────────────────────────────────────
-
-export interface ShellSummary {
-  weekVerified: number;
-  weekTotal: number;
-}
-
-// Sidebar counter: this week's verification meter.
-export async function shellSummary(): Promise<ShellSummary> {
-  const week = await db()
-    .select({ status: shipments.verificationStatus })
-    .from(shipments)
-    .where(and(eq(shipments.status, "published"), gte(shipments.publishedAt, startOfDayAgo(6))));
-  return {
-    weekVerified: week.filter((w) => w.status === "verified").length,
-    weekTotal: week.length,
-  };
-}
-
 // ── Feed ─────────────────────────────────────────────────────────────
 
 export interface FeedFilters {
@@ -109,6 +90,8 @@ export interface FeedItem {
   projectPath: string;
   webUrl: string;
   branch: string | null;
+  // Labelled "Type: Bug" in GitLab: the card shows Patch investigating instead of carrying a package.
+  bug: boolean;
   notes: string | null;
   publishedAt: Date;
   publishedVia: "confirmed" | "auto" | null;
@@ -196,6 +179,7 @@ async function hydrateFeed(
       projectPath: t.projectPath,
       webUrl: t.webUrl,
       branch: s.branch,
+      bug: t.labels.some((l) => l.trim().toLowerCase() === "type: bug"),
       notes: s.notesFinal ?? s.notesDraft,
       publishedAt: s.publishedAt ?? s.updatedAt,
       publishedVia: s.publishedVia,
@@ -276,7 +260,6 @@ export interface Overview {
     requesterPct: number | null;
   };
   last7: Array<{ key: string; count: number }>;
-  drafts: { pending: number; blocked: number };
   attention: AttentionItem[];
   // Published per São Paulo day over the last 53 weeks.
   activity: Map<string, number>;
@@ -331,13 +314,6 @@ export async function overview(viewer: Viewer): Promise<Overview> {
     return { key, count: activity.get(key) ?? 0 };
   });
 
-  const [drafts] = await db()
-    .select({
-      pending: sql<number>`count(*) filter (where ${shipments.status} in ('pending_confirmation','held','awaiting_hold_decision','needs_branch'))::int`,
-      blocked: sql<number>`count(*) filter (where ${shipments.status} in ('held','awaiting_hold_decision','needs_branch'))::int`,
-    })
-    .from(shipments);
-
   return {
     week: {
       total: week.length,
@@ -357,7 +333,6 @@ export async function overview(viewer: Viewer): Promise<Overview> {
       requesterPct: withRequester.length ? pct(requesterOk, withRequester.length) : null,
     },
     last7,
-    drafts,
     attention: await attention(now),
     activity,
     recent: await listFeed(viewer, { limit: 6 }),

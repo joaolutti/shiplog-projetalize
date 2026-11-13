@@ -7,7 +7,6 @@ import { Suspense } from "react";
 import { AppFrame, NavLinks, NavList, type NavItem } from "@/components/shell";
 import { Avatar, Icon } from "@/components/ui";
 import { getViewer } from "@/lib/auth/viewer";
-import { shellSummary } from "@/lib/shipments/queries";
 
 const BASE_NAV: NavItem[] = [
   { href: "/", label: "Visão geral", icon: "space_dashboard" },
@@ -23,11 +22,6 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
       nav={
         <Suspense fallback={<NavList items={BASE_NAV} />}>
           <Nav />
-        </Suspense>
-      }
-      meter={
-        <Suspense fallback={null}>
-          <Meter />
         </Suspense>
       }
       user={
@@ -56,29 +50,6 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
 // Highlights the current page; reads the URL, so it streams in behind Suspense.
 function Nav() {
   return <NavLinks items={BASE_NAV} />;
-}
-
-async function Meter() {
-  const viewer = await getViewer();
-  if (!viewer) return null;
-  const { weekVerified, weekTotal } = await shellSummary();
-  const pct = weekTotal ? Math.round((weekVerified / weekTotal) * 100) : 0;
-  return (
-    <>
-      <div className="meter-h">
-        <span className="muted">
-          <span className="tab" style={{ color: "var(--color-text)" }}>
-            {weekVerified} / {weekTotal}
-          </span>{" "}
-          verificadas
-        </span>
-        <Link href="/feed?verification=unverified">Pendentes</Link>
-      </div>
-      <div className="meter-bar" role="img" aria-label={`${weekVerified} de ${weekTotal} entregas da semana verificadas`}>
-        <i style={{ width: `${pct}%` }} />
-      </div>
-    </>
-  );
 }
 
 async function UserBlock() {

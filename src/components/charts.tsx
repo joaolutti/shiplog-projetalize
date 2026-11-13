@@ -16,8 +16,8 @@ export function DayBars({ days }: { days: Array<{ key: string; count: number }> 
       {days.map((d) => (
         <div key={d.key} className={`d ${d.key === today ? "today" : ""}`} title={`${entregas(d.count)} · ${dateLabel(d.key)}`}>
           <div className="col">
-            {d.count > 0 && <span className="n">{d.count}</span>}
-            <span className={`b ${d.count ? "" : "z"}`} style={{ height: d.count ? Math.max(8, (d.count / max) * 96) : 3 }} />
+            <span className={`n ${d.count ? "" : "z"}`}>{d.count}</span>
+            <span className={`b ${d.count ? "" : "z"}`} style={{ height: d.count ? `max(4px, ${(d.count / max) * 75}%)` : 3 }} />
           </div>
           <span className="lb">{d.key === today ? "hoje" : weekday(d.key)}</span>
         </div>

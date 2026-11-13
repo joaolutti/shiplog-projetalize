@@ -21,15 +21,19 @@ export default function OverviewPage({ searchParams }: PageProps<"/">) {
   );
 }
 
-function Tile(props: { icon: string; label: string; value: number; chip?: React.ReactNode; hot?: boolean }) {
+// Title and icon, a line of detail, then the number or, for Entregas, the week's bars.
+function Tile(props: { icon: string; label: string; sub: string; warn?: boolean; value?: number; hot?: boolean; children?: React.ReactNode }) {
   return (
     <div className={`t stat s3 ${props.hot ? "hot" : ""}`}>
-      <div className="stat-top">
+      <div className="stat-h">
+        <h3>{props.label}</h3>
         <Icon name={props.icon} />
-        {props.chip}
       </div>
-      <span className="k">{props.label}</span>
-      <span className="v">{props.value}</span>
+      <span className={`sub ${props.warn ? "warn" : ""}`}>{props.sub}</span>
+      <div className="v-row">
+        {props.value !== undefined && <span className="v">{props.value}</span>}
+        {props.children}
+      </div>
     </div>
   );
 }
@@ -47,9 +51,6 @@ async function Overview({ searchParams }: Pick<PageProps<"/">, "searchParams">) 
     ]
       .filter(Boolean)
       .join(" e ") || (w.total ? "Tudo o que foi entregue esta semana foi verificado" : "Nada entregue nos últimos 7 dias");
-  const branchLine = Object.entries(w.byBranch)
-    .map(([b, n]) => `${n} em ${b}`)
-    .join(" · ");
   const bars = [
     ...w.pctByBranch.map((b) => ({ label: `Em ${b.branch}`, pct: b.pct })),
     ...(w.requesterPct !== null ? [{ label: "Pelo solicitante", pct: w.requesterPct }] : []),
@@ -57,39 +58,66 @@ async function Overview({ searchParams }: Pick<PageProps<"/">, "searchParams">) 
 
   return (
     <div className="bento">
-      <section className="t hero s6 r2" aria-labelledby="hero-h">
-        <div className="stat-top" style={{ marginBottom: 0 }}>
-          <Icon name="deployed_code" />
-          {w.today > 0 && <span className="delta ok">+{w.today} hoje</span>}
-        </div>
-        <span className="k" id="hero-h" style={{ marginTop: 18, fontSize: 12, color: "var(--color-muted)" }}>
-          Entregas · últimos 7 dias
-        </span>
-        <span className="v">{w.total}</span>
-        <span className="cap">{branchLine ? `${branchLine} · time inteiro` : "Time inteiro"}</span>
+      <Tile icon="deployed_code" label="Entregas" sub={`Últimos 7 dias${w.today ? ` · +${w.today} hoje` : ""}`}>
         <DayBars days={o.last7} />
-      </section>
-
-      <Tile icon="task_alt" label="Verificadas" value={w.verified} chip={<span className="delta neu">{w.verifiedPct}%</span>} />
+      </Tile>
+      <Tile icon="task_alt" label="Verificadas" sub={`${w.verifiedPct}% das entregas da semana`} value={w.verified} />
       <Tile
         icon="hourglass_empty"
         label="Aguardando verificação"
+        sub={w.waitingOver24h ? `${w.waitingOver24h} há mais de 24 h` : "Nesta semana"}
+        warn={w.waitingOver24h > 0}
         value={w.waiting}
-        chip={w.waitingOver24h ? <span className="delta warn">{w.waitingOver24h} há +24 h</span> : undefined}
       />
       <Tile
         icon="report"
         label="Problema relatado"
+        sub={w.issues ? "Precisa de atenção" : "Nesta semana"}
+        warn={w.issues > 0}
         value={w.issues}
-        chip={w.issues ? <span className="delta warn">Atenção</span> : undefined}
         hot={w.issues > 0}
       />
-      <Tile
-        icon="edit_note"
-        label="Rascunhos pendentes"
-        value={o.drafts.pending}
-        chip={o.drafts.blocked ? <span className="delta warn">{plural(o.drafts.blocked, "bloqueado", "bloqueados")}</span> : undefined}
-      />
+      <section className="t pad s12" aria-labelledby="recent-h">
+        <div className="sec-h">
+          <div className="ttl">
+            <h2 id="recent-h">Entregas recentes</h2>
+            <span className="sep" />
+            <span className="muted" style={{ fontSize: 13 }}>
+              Últimas publicadas
+            </span>
+          </div>
+          <Link className="link-u" href="/feed">
+            Ver todas
+          </Link>
+        </div>
+        <ShipmentTable items={o.recent} href={(id) => `/?s=${id}`} tech={viewer.role !== "member"} />
+      </section>
+      <section className="t pad s7 fill" id="attention" aria-labelledby="att-h">
+        <div className="sec-h">
+          <h2 id="att-h">Precisa de atenção</h2>
+          {o.attention.length > 5 && <span className="muted">{o.attention.length} no total</span>}
+        </div>
+        {o.attention.length ? (
+          <ul className="att">
+            {o.attention.slice(0, 5).map((a) => (
+              <li key={`${a.href}-${a.title}-${a.sub}`}>
+                <Link href={a.href}>
+                  <span className="ib">
+                    <Icon name={a.icon} />
+                  </span>
+                  <span style={{ minWidth: 0 }}>
+                    <div className="att-t">{a.title}</div>
+                    <div className="att-s">{a.sub}</div>
+                  </span>
+                  <Chip tone={a.chip.tone}>{a.chip.label}</Chip>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <Empty>Nada pendente. Todas as entregas estão confirmadas e sem problemas.</Empty>
+        )}
+      </section>
 
       <section className="t pad s5" aria-labelledby="score-h">
         <div className="sec-h">
@@ -120,39 +148,12 @@ async function Overview({ searchParams }: Pick<PageProps<"/">, "searchParams">) 
         )}
       </section>
 
-      <section className="t pad s7" id="attention" aria-labelledby="att-h">
-        <div className="sec-h">
-          <h2 id="att-h">Precisa de atenção</h2>
-          {o.attention.length > 5 && <span className="muted">{o.attention.length} no total</span>}
-        </div>
-        {o.attention.length ? (
-          <ul className="att">
-            {o.attention.slice(0, 5).map((a) => (
-              <li key={`${a.href}-${a.title}-${a.sub}`}>
-                <Link href={a.href}>
-                  <span className="ib">
-                    <Icon name={a.icon} />
-                  </span>
-                  <span style={{ minWidth: 0 }}>
-                    <div className="att-t">{a.title}</div>
-                    <div className="att-s">{a.sub}</div>
-                  </span>
-                  <Chip tone={a.chip.tone}>{a.chip.label}</Chip>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <Empty>Nada pendente. Todas as entregas estão confirmadas e sem problemas.</Empty>
-        )}
-      </section>
-
       <section className="t pad s12" aria-labelledby="contrib-h">
         <div className="sec-h" style={{ marginBottom: 8 }}>
           <div className="ttl">
             <h2 id="contrib-h">Ritmo do time</h2>
             <span className="sep" />
-            <span className="muted" style={{ fontSize: 14 }}>
+            <span className="muted" style={{ fontSize: 13 }}>
               Entregas por dia, todas as branches
             </span>
           </div>
@@ -163,21 +164,6 @@ async function Overview({ searchParams }: Pick<PageProps<"/">, "searchParams">) 
         <ActivityHeatmap activity={o.activity} />
       </section>
 
-      <section className="t pad s12" aria-labelledby="recent-h">
-        <div className="sec-h">
-          <div className="ttl">
-            <h2 id="recent-h">Entregas recentes</h2>
-            <span className="sep" />
-            <span className="muted" style={{ fontSize: 14 }}>
-              Últimas publicadas
-            </span>
-          </div>
-          <Link className="link-u" href="/feed">
-            Ver todas
-          </Link>
-        </div>
-        <ShipmentTable items={o.recent} href={(id) => `/?s=${id}`} />
-      </section>
       {Number.isInteger(open) && open > 0 && <ShipmentDrawer viewer={viewer} shipmentId={open} closeHref="/" />}
     </div>
   );

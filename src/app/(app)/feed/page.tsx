@@ -39,6 +39,7 @@ async function Feed({ searchParams }: Pick<PageProps<"/feed">, "searchParams">) 
   };
   const [items, options] = await Promise.all([listFeed(viewer, filters), feedOptions()]);
   const list = one(sp.view) === "list";
+  const tech = viewer.role !== "member";
 
   // The side panel is ?s=<shipment>, on top of the current filters.
   const base = new URLSearchParams(Object.entries(sp).flatMap(([k, v]) => (k === "s" || v === undefined ? [] : [[k, String(one(v))]])));
@@ -65,12 +66,12 @@ async function Feed({ searchParams }: Pick<PageProps<"/feed">, "searchParams">) 
           <Empty>Nenhuma entrega com esses filtros.</Empty>
         ) : list ? (
           <div className="t flush">
-            <ShipmentTable items={items} actions href={panelHref} />
+            <ShipmentTable items={items} actions href={panelHref} tech={tech} />
           </div>
         ) : (
           <div className="cards">
             {items.map((item) => (
-              <ShipmentCard key={item.shipmentId} item={item} href={panelHref} />
+              <ShipmentCard key={item.shipmentId} item={item} href={panelHref} tech={tech} />
             ))}
           </div>
         )}

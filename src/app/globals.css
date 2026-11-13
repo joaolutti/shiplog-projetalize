@@ -46,12 +46,14 @@
   --g4: #4a1fc2;
   --r: 8px;
   --r-md: 14px;
-  --r-xl: 24px;
+  --r-xl: 16px;
   --r-pill: 9999px;
-  --sw: 264px;
-  --pad: 28px;
-  --gap: 14px;
-  --top: 64px;
+  --sw: 232px;
+  --pad: 24px;
+  --gap: 20px;
+  --top: 56px;
+  --page: 1180px;
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   color-scheme: light;
 }
 
@@ -86,7 +88,7 @@ a:not([class]):hover {
   outline-offset: 2px;
 }
 h1 {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 500;
   line-height: 1.3;
   margin: 0;
@@ -94,7 +96,7 @@ h1 {
   letter-spacing: -0.01em;
 }
 h2 {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 500;
   margin: 0;
   line-height: 1.35;
@@ -154,7 +156,14 @@ h3 {
   min-height: 100vh;
 }
 .app.collapsed {
-  --sw: 72px;
+  --sw: 64px;
+}
+/* The sidebar keeps its layout while it narrows: labels are clipped and fade, icons stay put. */
+.app.animate {
+  transition: grid-template-columns 0.24s cubic-bezier(0.2, 0, 0, 1);
+}
+.app.animate :is(.lbl, .chev, .brand span, .user .nm, .rolepill) {
+  transition: opacity 0.16s;
 }
 .side {
   position: sticky;
@@ -166,6 +175,8 @@ h3 {
   background: var(--color-bg);
   z-index: 20;
   min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
 }
 .side-h {
   height: var(--top);
@@ -174,7 +185,7 @@ h3 {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 0 16px 0 20px;
+  padding: 0 16px;
   border-bottom: 1px solid var(--color-line);
 }
 .brand {
@@ -184,7 +195,7 @@ h3 {
   text-decoration: none;
   color: var(--color-text);
   font-weight: 500;
-  font-size: 16px;
+  font-size: 15px;
   letter-spacing: -0.01em;
   min-width: 0;
 }
@@ -226,19 +237,20 @@ h3 {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 20px 16px;
+  padding: 16px 12px;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 .snav a {
   display: flex;
   align-items: center;
   gap: 12px;
-  height: 42px;
-  padding: 0 12px;
-  border-radius: 10px;
+  height: 36px;
+  padding: 0 11px;
+  border-radius: var(--r);
   color: var(--color-muted);
   text-decoration: none;
-  font-size: 14px;
+  font-size: 13px;
   white-space: nowrap;
 }
 .snav a:hover {
@@ -281,24 +293,11 @@ h3 {
 }
 .side-blk {
   border-top: 1px solid var(--color-line);
-  padding: 20px 24px;
+  padding: 16px 18px;
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
-.meter-h {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 8px;
-  font-size: 13px;
-}
-.meter-h a {
-  color: var(--color-text);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-.meter-bar,
 .bar {
   height: 4px;
   background: var(--color-line-strong);
@@ -306,7 +305,6 @@ h3 {
   border-radius: 4px;
   overflow: hidden;
 }
-.meter-bar i,
 .bar i {
   border-radius: 4px;
   position: absolute;
@@ -339,32 +337,8 @@ h3 {
   padding: 1px 7px;
   white-space: nowrap;
 }
-.app.collapsed .lbl,
-.app.collapsed .chev,
-.app.collapsed .snav .count,
-.app.collapsed .brand span,
-.app.collapsed .side-meter,
-.app.collapsed .user .nm,
-.app.collapsed .user .rolepill {
-  display: none;
-}
-.app.collapsed .side-h {
-  padding: 0;
-  justify-content: center;
-}
-.app.collapsed .side-h .brand {
-  display: none;
-}
-.app.collapsed .snav {
-  padding: 20px 12px;
-}
-.app.collapsed .snav a {
-  justify-content: center;
-  padding: 0;
-}
-.app.collapsed .side-blk {
-  padding: 16px 0;
-  align-items: center;
+.app.collapsed :is(.lbl, .chev, .snav .count, .brand span, .user .nm, .rolepill) {
+  opacity: 0;
 }
 .scrim {
   display: none;
@@ -381,8 +355,8 @@ h3 {
   height: var(--top);
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 0 var(--pad);
+  gap: 8px;
+  padding: 0 20px 0 12px;
   background: color-mix(in srgb, var(--color-bg) 90%, transparent);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--color-line);
@@ -393,29 +367,35 @@ h3 {
 .crumb {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   min-width: 0;
-  font-size: 16px;
+  font-size: 13px;
+  color: var(--color-muted);
+  white-space: nowrap;
 }
 .crumb a {
-  color: var(--color-text);
+  color: inherit;
   text-decoration: none;
 }
-.crumb .sep,
+.crumb a:hover {
+  color: var(--color-text);
+}
+.crumb .step {
+  display: contents;
+}
+.crumb .slash {
+  color: var(--color-line-strong);
+}
+.crumb [aria-current] {
+  color: var(--color-text);
+  font-weight: 500;
+}
 .sep {
   width: 4px;
   height: 4px;
   border-radius: 50%;
   background: var(--color-faint);
   flex: none;
-}
-.crumb .sub {
-  color: var(--color-muted);
-  font-size: 14px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
 }
 .top-r {
   margin-left: auto;
@@ -428,13 +408,13 @@ h3 {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  height: 38px;
-  padding: 0 16px 0 14px;
+  height: 34px;
+  padding: 0 14px 0 12px;
   border-radius: var(--r-pill);
   background: var(--color-ink);
   color: var(--color-ink-text);
   font-weight: 500;
-  font-size: 14px;
+  font-size: 13px;
   text-decoration: none;
   border: 0;
   cursor: pointer;
@@ -447,17 +427,37 @@ h3 {
   background: var(--color-ink-text);
   color: var(--color-ink);
 }
+/* Pages sit in a centred column with room around them. */
+.page-h,
+main.view,
+.foot {
+  width: 100%;
+  max-width: calc(var(--page) + 2 * 40px);
+  margin-inline: auto;
+  padding-inline: 40px;
+}
+.page-h {
+  padding-top: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.page-h p {
+  margin: 0;
+  color: var(--color-muted);
+}
 main.view {
   display: flex;
   flex-direction: column;
   gap: var(--gap);
-  padding: 20px 24px 0;
+  padding-top: 24px;
 }
 .foot {
-  padding: 20px 24px 32px;
+  padding-top: 40px;
+  padding-bottom: 32px;
   font-size: 12px;
   color: var(--color-faint);
-  margin: auto 0 0;
+  margin-top: auto;
 }
 
 /* ---------- Bento ---------- */
@@ -493,9 +493,6 @@ main.view {
 .s12 {
   grid-column: span 12;
 }
-.r2 {
-  grid-row: span 2;
-}
 .flush {
   padding: 0;
   overflow: hidden;
@@ -526,7 +523,7 @@ main.view {
   color: var(--color-muted);
   text-decoration: underline;
   text-underline-offset: 4px;
-  font-size: 14px;
+  font-size: 13px;
   white-space: nowrap;
 }
 .link-u:hover {
@@ -534,56 +531,75 @@ main.view {
 }
 
 .stat {
-  padding: 22px 24px 24px;
+  padding: 18px 20px 20px;
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
-.stat-top {
+.stat-h {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 8px;
-  margin-bottom: 28px;
-  min-height: 26px;
 }
-.stat-top > .ms {
-  font-size: 22px;
-  color: var(--color-muted);
+.stat-h h3 {
+  font-size: 13px;
+  font-weight: 500;
+}
+.stat-h .ms {
+  font-size: 18px;
+  color: var(--color-faint);
+}
+.stat .sub {
+  font-size: 12px;
+  color: var(--color-faint);
+  margin-top: 2px;
+}
+.stat .sub.warn {
+  color: var(--color-laranja-text);
 }
 .stat.hot {
   background: linear-gradient(160deg, rgba(255, 102, 51, 0.08), transparent 55%), var(--color-tile);
 }
-.stat .k {
-  font-size: 12px;
-  color: var(--color-muted);
-}
 .stat .v {
-  font-size: 38px;
+  font-size: 28px;
   font-weight: 400;
   line-height: 1.15;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
   margin-top: 4px;
 }
-.hero {
-  padding: 28px;
+/* The week's bars beside the count, in the Entregas tile. */
+/* At the bottom, so the numbers line up across tiles. */
+.stat .v-row {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  background: radial-gradient(120% 90% at 100% 0%, rgba(113, 54, 255, 0.1), transparent 60%), var(--color-tile);
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: auto;
+  padding-top: 20px;
 }
-.hero .v {
-  font-size: 96px;
+.stat .days {
+  flex: 1;
+  padding: 0;
+  gap: 5px;
+}
+.stat .days .d {
+  gap: 4px;
+}
+.stat .days .col {
+  height: 52px;
+  gap: 3px;
+}
+.stat .days .n {
+  font-size: 10px;
   line-height: 1;
-  font-weight: 300;
-  letter-spacing: -0.04em;
-  font-variant-numeric: tabular-nums;
-  margin-top: 10px;
 }
-.hero .cap {
-  color: var(--color-muted);
-  font-size: 14px;
+.stat .days .b {
+  border-radius: 4px;
+}
+.stat .days .lb {
+  font-size: 10px;
 }
 .days {
   margin-top: auto;
@@ -620,6 +636,9 @@ main.view {
   border-radius: 6px 6px 2px 2px;
   min-height: 3px;
 }
+.days .n.z {
+  color: var(--color-faint);
+}
 .days .b.z {
   background: var(--color-line-strong);
   border-radius: 2px;
@@ -635,40 +654,17 @@ main.view {
 .days .d.today .lb {
   color: var(--color-text);
 }
-.delta {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  height: 26px;
-  padding: 0 10px;
-  display: inline-flex;
-  align-items: center;
-  border-radius: var(--r-pill);
-  white-space: nowrap;
-}
-.delta.ok {
-  background: var(--ok-soft);
-  color: var(--color-ok-text);
-}
-.delta.warn {
-  background: var(--laranja-soft);
-  color: var(--color-laranja-text);
-}
-.delta.neu {
-  background: var(--color-raised);
-  color: var(--color-muted);
-}
-
 /* Verification ring */
 .score {
   display: flex;
-  gap: 40px;
+  gap: 24px;
   align-items: center;
   flex-wrap: wrap;
 }
 .vring {
   position: relative;
-  width: 180px;
-  height: 180px;
+  width: 112px;
+  height: 112px;
   flex: none;
   max-width: 100%;
 }
@@ -687,12 +683,12 @@ main.view {
   gap: 2px;
 }
 .vring .c b {
-  font-size: 36px;
+  font-size: 24px;
   font-weight: 400;
   font-variant-numeric: tabular-nums;
 }
 .vring .c span {
-  font-size: 11px;
+  font-size: 9px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-muted);
@@ -710,7 +706,7 @@ main.view {
 .score-b p {
   margin: 0;
   color: var(--color-muted);
-  font-size: 14px;
+  font-size: 13px;
 }
 .bars {
   display: flex;
@@ -725,7 +721,7 @@ main.view {
   grid-template-columns: 118px minmax(0, 1fr) 40px;
   align-items: center;
   gap: 14px;
-  font-size: 14px;
+  font-size: 13px;
   color: var(--color-muted);
 }
 .bars li b {
@@ -825,9 +821,11 @@ main.view {
   font-size: 28px;
   font-variant-numeric: tabular-nums;
 }
+/* Room for the today and hover outlines, which the scroll box would otherwise clip. */
 .contrib-scroll {
   overflow-x: auto;
-  padding-bottom: 4px;
+  padding: 4px 4px 8px;
+  margin: -4px;
 }
 .cg {
   display: grid;
@@ -1144,21 +1142,25 @@ table.mr {
   align-items: center;
   gap: 4px;
   height: 24px;
-  padding: 0 9px;
-  border-radius: var(--r-pill);
+  padding: 0 8px 0 6px;
+  border-radius: 6px;
   flex: none;
   font-size: 12px;
   white-space: nowrap;
   border: 1px solid var(--color-line-strong);
-  color: var(--color-muted);
-}
-.branch.main {
-  border-color: var(--roxo-line);
-  background: var(--roxo-soft);
-  color: var(--color-roxo-text);
+  background: var(--color-surface);
+  color: var(--color-text);
 }
 .branch .ms {
-  font-size: 13px;
+  font-size: 15px;
+  font-variation-settings: "FILL" 1;
+  color: var(--color-faint);
+}
+.branch.main .ms {
+  color: var(--color-ok);
+}
+.branch.staging .ms {
+  color: var(--color-warn);
 }
 .label {
   display: inline-flex;
@@ -1231,22 +1233,22 @@ table.mr {
 /* Filters */
 .filters {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
   align-items: center;
 }
 .search {
   display: flex;
   align-items: center;
-  gap: 10px;
-  height: 44px;
-  border: 1px solid var(--color-line);
-  padding: 0 14px;
-  background: var(--color-bg);
+  gap: 8px;
+  height: 36px;
+  border: 1px solid var(--color-line-strong);
+  padding: 0 12px;
+  background: var(--color-surface);
   min-width: 0;
-  flex: 1 1 260px;
-  max-width: 420px;
-  border-radius: var(--r-pill);
+  flex: 1 1 220px;
+  max-width: 320px;
+  border-radius: var(--r);
 }
 .search:focus-within {
   border-color: var(--roxo-line);
@@ -1258,7 +1260,7 @@ table.mr {
   background: transparent;
   min-width: 0;
   flex: 1;
-  font-size: 14px;
+  font-size: 13px;
 }
 .search input::placeholder {
   color: var(--color-faint);
@@ -1267,9 +1269,9 @@ table.mr {
   color: var(--color-faint);
 }
 .sel {
-  height: 44px;
+  height: 36px;
   border: 1px solid var(--color-line);
-  border-radius: var(--r-pill);
+  border-radius: var(--r);
   background: var(--color-bg);
   padding: 0 12px;
   font-size: 14px;
@@ -1283,7 +1285,7 @@ table.mr {
 .seg {
   display: inline-flex;
   border: 1px solid var(--color-line);
-  border-radius: var(--r-pill);
+  border-radius: var(--r);
   background: var(--color-bg);
   padding: 3px;
   gap: 2px;
@@ -1292,14 +1294,14 @@ table.mr {
 .seg button {
   border: 0;
   background: transparent;
-  height: 36px;
-  padding: 0 14px;
+  height: 28px;
+  padding: 0 12px;
   font-size: 13px;
   cursor: pointer;
   color: var(--color-muted);
   display: inline-flex;
   align-items: center;
-  border-radius: var(--r-pill);
+  border-radius: 6px;
   text-decoration: none;
 }
 .seg [aria-current="true"],
@@ -1309,9 +1311,122 @@ table.mr {
 }
 .seg.icons a,
 .seg.icons button {
-  width: 40px;
+  width: 32px;
   padding: 0;
   justify-content: center;
+}
+
+/* Filter combobox: a square button and a floating list */
+.combo {
+  position: relative;
+}
+.combo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 10px 0 12px;
+  border: 1px solid var(--color-line-strong);
+  border-radius: var(--r);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.combo-btn:hover {
+  background: var(--color-tile-hi);
+}
+.combo-btn > .ms {
+  color: var(--color-muted);
+}
+.combo-btn .chev {
+  font-size: 18px;
+  transition: transform 0.15s;
+}
+.combo-btn[aria-expanded="true"] .chev {
+  transform: rotate(180deg);
+}
+.combo-btn.on {
+  border-color: var(--color-text);
+}
+.combo-v {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.combo-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  min-width: max(100%, 220px);
+  max-width: min(320px, calc(100vw - 32px));
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  border-radius: var(--r-md);
+  box-shadow: 0 8px 24px rgba(23, 23, 28, 0.1), 0 1px 2px rgba(23, 23, 28, 0.06);
+  padding: 4px;
+}
+.combo-pop.end {
+  left: auto;
+  right: 0;
+}
+.combo-q {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px 8px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--color-line);
+  color: var(--color-faint);
+}
+.combo-q input {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  font-size: 13px;
+  color: var(--color-text);
+}
+.combo-pop ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  outline: 0;
+}
+.combo-pop li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.combo-pop li span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.combo-pop li.act {
+  background: var(--color-hover);
+}
+.combo-pop li .ms {
+  font-size: 16px;
+  color: var(--color-roxo-text);
+}
+.combo-none {
+  margin: 0;
+  padding: 8px;
+  font-size: 13px;
+  color: var(--color-muted);
 }
 
 /* Shipment cards */
@@ -1336,9 +1451,11 @@ table.mr {
   align-items: flex-start;
   padding: 24px 24px 16px;
 }
-.ac-h .ib {
-  width: 52px;
-  height: 52px;
+.ac-h .mascot {
+  width: 56px;
+  height: auto;
+  flex: none;
+  margin: -4px -4px 0 0;
 }
 .ac-tt {
   flex: 1;
@@ -1372,6 +1489,7 @@ table.mr {
   white-space: pre-line;
 }
 .ac-who {
+  margin: 0;
   padding: 8px 24px 0;
   font-size: 12px;
   color: var(--color-faint);
@@ -1439,7 +1557,11 @@ table.mr {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  padding: 16px 24px 24px;
+  padding: 16px 24px 0;
+}
+/* Room above the footer, whichever block comes last (box, tags, notes…). */
+.ac > :nth-last-child(2) {
+  margin-bottom: 24px;
 }
 .ac-f {
   margin-top: auto;
@@ -1471,6 +1593,16 @@ table.mr {
   padding: 32px;
   text-align: center;
   color: var(--color-muted);
+}
+/* A tile stretched by its row: the empty state takes the rest of it, text centred. */
+.fill {
+  display: flex;
+  flex-direction: column;
+}
+.fill > .empty {
+  flex: 1;
+  display: grid;
+  place-content: center;
 }
 
 /* Ticket */
@@ -1852,9 +1984,6 @@ textarea:focus,
   .s7 {
     grid-column: span 12;
   }
-  .r2 {
-    grid-row: auto;
-  }
   .s3 {
     grid-column: span 6;
   }
@@ -1890,6 +2019,12 @@ textarea:focus,
   main.view {
     padding: 12px 16px 0;
   }
+  .page-h {
+    padding: 20px 16px 0;
+  }
+  .stat .days .lb {
+    display: none;
+  }
   :root {
     --gap: 12px;
   }
@@ -1903,10 +2038,6 @@ textarea:focus,
   .side-toggle {
     display: none;
   }
-  .crumb .sub,
-  .crumb .sep {
-    display: none;
-  }
   .pad {
     padding: 20px;
   }
@@ -1916,12 +2047,6 @@ textarea:focus,
   .stat .v {
     font-size: 30px;
   }
-  .hero {
-    padding: 22px;
-  }
-  .hero .v {
-    font-size: 72px;
-  }
   .days .col {
     height: 88px;
   }
@@ -1930,10 +2055,6 @@ textarea:focus,
   }
   .cta {
     padding: 0 12px;
-  }
-  .vring {
-    width: 150px;
-    height: 150px;
   }
   .bars li {
     grid-template-columns: 100px minmax(0, 1fr) 36px;
@@ -1957,6 +2078,11 @@ textarea:focus,
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;
+  }
+  /* Not none: closing waits for the drawer's animationend. */
+  .drawer,
+  .drawer-scrim {
+    animation-duration: 1ms !important;
   }
 }
 
@@ -2003,6 +2129,10 @@ textarea:focus,
   inset: 0;
   background: rgba(23, 23, 28, 0.28);
   z-index: 40;
+  animation: fade-in 0.4s var(--ease-drawer);
+}
+.drawer-scrim.out {
+  animation: fade-out 0.3s var(--ease-drawer) forwards;
 }
 .drawer {
   position: fixed;
@@ -2017,11 +2147,29 @@ textarea:focus,
   display: flex;
   flex-direction: column;
   outline: 0;
-  animation: drawer-in 0.18s ease-out;
+  animation: drawer-in 0.4s var(--ease-drawer);
+}
+/* Slides in from the right edge and back out on close, like shadcn's (vaul) drawer. */
+.drawer.out {
+  animation: drawer-out 0.3s var(--ease-drawer) forwards;
 }
 @keyframes drawer-in {
   from {
-    transform: translateX(24px);
+    transform: translateX(100%);
+  }
+}
+@keyframes drawer-out {
+  to {
+    transform: translateX(100%);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes fade-out {
+  to {
     opacity: 0;
   }
 }

@@ -12,12 +12,14 @@ export async function ShipmentDrawer({ viewer, shipmentId, closeHref }: { viewer
   const ticket = ticketId ? await ticketDetail(viewer, ticketId) : null;
   const s = ticket?.shipments.find((x) => x.id === shipmentId);
   if (!ticket || !s) return null;
+  const tech = viewer.role !== "member";
 
   return (
     <DrawerFrame closeHref={closeHref} labelledBy="drawer-title">
       <div className="drawer-h">
         <span className="eyebrow">
-          #{ticket.iid} · {ticket.projectPath}
+          #{ticket.iid}
+          {tech && ` · ${ticket.projectPath}`}
         </span>
         <h2 id="drawer-title">{ticket.title}</h2>
         <div className="row">
@@ -45,10 +47,12 @@ export async function ShipmentDrawer({ viewer, shipmentId, closeHref }: { viewer
           Ver detalhes
           <Icon name="arrow_forward" />
         </Link>
-        <a className="btn ghost" href={ticket.webUrl} target="_blank" rel="noreferrer">
-          Abrir no GitLab
-          <Icon name="open_in_new" />
-        </a>
+        {tech && (
+          <a className="btn ghost" href={ticket.webUrl} target="_blank" rel="noreferrer">
+            Abrir no GitLab
+            <Icon name="open_in_new" />
+          </a>
+        )}
       </div>
     </DrawerFrame>
   );
